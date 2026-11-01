@@ -1,14 +1,4 @@
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
 from app import config
-
-
-@pytest.fixture
-def client():
-    # Use context manager to trigger lifespan
-    with TestClient(app, base_url="http://localhost:8005") as c:
-        yield c
 
 
 def test_allowed_hosts(client):

@@ -1,14 +1,3 @@
-import pytest
-from fastapi.testclient import TestClient
-from app.main import app
-
-
-@pytest.fixture
-def client():
-    with TestClient(app, base_url="http://localhost:8005") as c:
-        yield c
-
-
 def test_root_redirect(client):
     res = client.get("/", follow_redirects=False)
     assert res.status_code == 303

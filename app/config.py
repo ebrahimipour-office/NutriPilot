@@ -13,6 +13,17 @@ LOG_PATH = DATA_DIR / "app.log"
 TEMPLATES_DIR = BASE_DIR / "app" / "templates"
 STATIC_DIR = BASE_DIR / "app" / "static"
 
+
+def configure_data_dir(new_data_dir: Path | str) -> None:
+    """Update DATA_DIR and derived paths dynamically (used for isolated test environments)."""
+    global DATA_DIR, SOURCES_DIR, PLANS_DIR, DB_PATH, LOG_PATH
+    DATA_DIR = Path(new_data_dir).resolve()
+    SOURCES_DIR = DATA_DIR / "sources"
+    PLANS_DIR = DATA_DIR / "plans"
+    DB_PATH = DATA_DIR / "app.db"
+    LOG_PATH = DATA_DIR / "app.log"
+
+
 # Caps and Limits (TD §7.2, §8.4)
 HISTORY_MAX_MESSAGES: int = 30
 HISTORY_MAX_CHARS: int = 24000
