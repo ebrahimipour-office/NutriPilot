@@ -64,7 +64,6 @@ def test_meta_fields_unique_partial_index(tmp_path):
     db.init_db(db_file)
 
     with db.connect(db_file) as conn:
-        conn.execute("INSERT INTO users (id, name, created_at) VALUES (1, 'admin', '2026-11-02T00:00:00Z')")
         conn.execute(
             "INSERT INTO meta_fields (user_id, key, label, sort_order) VALUES (1, 'weight_kg', 'وزن', 1)"
         )
@@ -88,7 +87,6 @@ def test_sources_unique_file_path(tmp_path):
     db.init_db(db_file)
 
     with db.connect(db_file) as conn:
-        conn.execute("INSERT INTO users (id, name, created_at) VALUES (1, 'admin', '2026-11-02T00:00:00Z')")
         conn.execute(
             "INSERT INTO sources (user_id, name, description, file_path, created_at, deleted_at) VALUES (1, 'Src', 'Desc', 'sources/test.md', '2026-11-02T00:00:00Z', '2026-11-02T01:00:00Z')"
         )
@@ -104,7 +102,6 @@ def test_live_views_filter_soft_deleted(tmp_path):
     db.init_db(db_file)
 
     with db.connect(db_file) as conn:
-        conn.execute("INSERT INTO users (id, name, created_at) VALUES (1, 'admin', '2026-11-02T00:00:00Z')")
         conn.execute("INSERT INTO clients (id, user_id, name, created_at) VALUES (1, 1, 'Client Active', '2026-11-02T00:00:00Z')")
         conn.execute("INSERT INTO clients (id, user_id, name, created_at, deleted_at) VALUES (2, 1, 'Client Deleted', '2026-11-02T00:00:00Z', '2026-11-02T01:00:00Z')")
 
@@ -121,7 +118,6 @@ def test_check_constraints(tmp_path):
     db.init_db(db_file)
 
     with db.connect(db_file) as conn:
-        conn.execute("INSERT INTO users (id, name, created_at) VALUES (1, 'admin', '2026-11-02T00:00:00Z')")
         conn.execute("INSERT INTO clients (id, user_id, name, created_at) VALUES (1, 1, 'Client', '2026-11-02T00:00:00Z')")
         conn.execute("INSERT INTO chats (id, client_id, title, created_at) VALUES (1, 1, 'Chat', '2026-11-02T00:00:00Z')")
 
@@ -142,3 +138,43 @@ def test_check_constraints(tmp_path):
             conn.execute(
                 "INSERT INTO messages (chat_id, role, content, meta_status, created_at) VALUES (1, 'assistant', 'content', 'rejected', '2026-11-02T00:00:00Z')"
             )
+
+
+def test_seeding_and_no_overwrite(tmp_path):
+    db_file = tmp_path / "test.db"
+    db.init_db(db_file)
+
+    with db.connect(db_file) as conn:
+        # Verify user 1
+        cur = conn.cursor()
+        cur.execute("SELECT id, name FROM users WHERE id = 1")
+        user = cur.fetchone()
+        assert user is not None
+        assert user["name"] == "admin"
+
+        # Verify default settings
+        cur.execute("SELECT key, value FROM settings")
+        settings_dict = {row["key"]: row["value"] for row in cur.fetchall()}
+        assert settings_dict["active_cli"] == "claude"
+        assert settings_dict["default_plan_duration"] == "یک هفته"
+        assert settings_dict["ai_timeout_seconds"] == "180"
+        assert "You are a nutrition-planning assistant" in settings_dict["system_prompt"]
+        assert "cmd_claude" in settings_dict
+        assert "cmd_agy" in settings_dict
+        assert "cmd_codex" in settings_dict
+
+        # Modify a setting
+        conn.execute("UPDATE settings SET value = 'agy' WHERE key = 'active_cli'")
+
+    # Re-run init_db (simulate restart)
+    db.init_db(db_file)
+
+    with db.connect(db_file) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT value FROM settings WHERE key = 'active_cli'")
+        assert cur.fetchone()["value"] == "agy"
+
+
+def test_current_user_id():
+    assert db.current_user_id() == 1
+

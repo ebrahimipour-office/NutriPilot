@@ -1,8 +1,10 @@
 import sqlite3
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
 from app import config
+from app import defaults
 
 SCHEMA_V1 = """
 CREATE TABLE users (
@@ -119,10 +121,25 @@ def run_migrations(conn: sqlite3.Connection) -> None:
         cur.execute(f"PRAGMA user_version = {idx}")
 
 
+def seed_defaults(conn: sqlite3.Connection) -> None:
+    """Seed user 1 and default settings using INSERT OR IGNORE (never overwrites existing values)."""
+    now = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT OR IGNORE INTO users (id, name, created_at) VALUES (?, ?, ?)",
+        (1, "admin", now),
+    )
+    for key, val in defaults.DEFAULT_SETTINGS.items():
+        conn.execute(
+            "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+            (key, val),
+        )
+
+
 def init_db(db_path: Path | str | None = None) -> None:
-    """Initialize DB and apply any pending migrations."""
+    """Initialize DB, apply any pending migrations, and seed defaults."""
     with connect(db_path) as conn:
         run_migrations(conn)
+        seed_defaults(conn)
 
 
 def current_user_id() -> int:
