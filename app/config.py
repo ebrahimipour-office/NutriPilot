@@ -27,18 +27,25 @@ PORT: int = int(os.getenv("APP_PORT", "8005"))
 def get_allowed_hosts() -> set[str]:
     raw = os.getenv("ALLOWED_HOSTS")
     if raw:
-        return {h.strip() for h in raw.split(",") if h.strip()}
-    return {f"localhost:{PORT}", f"127.0.0.1:{PORT}", "localhost", "127.0.0.1", "testserver"}
+        return {h.strip().lower() for h in raw.split(",") if h.strip()}
+    return {
+        f"localhost:{PORT}".lower(),
+        f"127.0.0.1:{PORT}".lower(),
+        "localhost",
+        "127.0.0.1",
+        "testserver",
+    }
 
 def get_allowed_origins() -> set[str]:
     raw = os.getenv("ALLOWED_ORIGINS")
     if raw:
-        return {o.strip() for o in raw.split(",") if o.strip()}
+        return {o.strip().rstrip("/").lower() for o in raw.split(",") if o.strip()}
     return {
-        f"http://localhost:{PORT}",
-        f"http://127.0.0.1:{PORT}",
+        f"http://localhost:{PORT}".lower(),
+        f"http://127.0.0.1:{PORT}".lower(),
         "http://testserver",
     }
 
 ALLOWED_HOSTS: set[str] = get_allowed_hosts()
 ALLOWED_ORIGINS: set[str] = get_allowed_origins()
+
