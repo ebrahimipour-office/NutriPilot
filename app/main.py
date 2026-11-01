@@ -9,6 +9,7 @@ from starlette.responses import Response
 
 from app import config
 from app import db
+from app.routes import chats, clients, settings
 
 logger = logging.getLogger("nutripilot")
 
@@ -94,6 +95,7 @@ def create_app() -> FastAPI:
     config.STATIC_DIR.mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(config.STATIC_DIR)), name="static")
 
+    # Health check endpoints
     @app.get("/ping")
     async def ping_get():
         return {"status": "ok"}
@@ -102,8 +104,14 @@ def create_app() -> FastAPI:
     async def ping_post():
         return {"status": "ok"}
 
+    # Page routes
+    app.include_router(chats.router)
+    app.include_router(clients.router)
+    app.include_router(settings.router)
+
     return app
 
 
 app = create_app()
+
 

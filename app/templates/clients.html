@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}مراجعان | NutriPilot{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">مراجعان</h1>
+  <a href="/clients/new" class="btn btn-primary">ثبت مراجع جدید</a>
+</div>
+
+<div class="empty-state">
+  <h3>هنوز هیچ مراجعی ثبت نشده است</h3>
+  <p>اطلاعات شاگردان و مراجعان خود را ثبت کنید تا تاریخچه برنامه‌ها حفظ شود.</p>
+  <a href="/clients/new" class="btn btn-secondary">افزودن مراجع جدید</a>
+</div>
+{% endblock %}

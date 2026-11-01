@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}NutriPilot | نوترای‌پایلوت{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+  <header class="navbar">
+    <a href="/chats" class="brand">NutriPilot نوترای‌پایلوت</a>
+    <nav>
+      <ul class="nav-links">
+        <li>
+          <a href="/chats" class="nav-link {% if active_nav == 'chats' %}active{% endif %}">گفت‌وگوها</a>
+        </li>
+        <li>
+          <a href="/clients" class="nav-link {% if active_nav == 'clients' %}active{% endif %}">مراجعان</a>
+        </li>
+        <li>
+          <a href="/settings" class="nav-link {% if active_nav == 'settings' %}active{% endif %}">تنظیمات</a>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

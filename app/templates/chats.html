@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}گفت‌وگوها | NutriPilot{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">گفت‌وگوها</h1>
+  <a href="/chats/new" class="btn btn-primary">گفت‌وگوی جدید</a>
+</div>
+
+<div class="empty-state">
+  <h3>هنوز هیچ گفت‌وگویی ایجاد نشده است</h3>
+  <p>برای شروع تنظیم برنامه غذایی، یک گفت‌وگوی جدید آغاز کنید.</p>
+  <a href="/chats/new" class="btn btn-secondary">شروع اولین گفت‌وگو</a>
+</div>
+{% endblock %}
