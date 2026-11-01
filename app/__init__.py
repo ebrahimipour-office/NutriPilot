@@ -1,0 +1,1 @@
+"""NutriPilot configuration and constants."""
