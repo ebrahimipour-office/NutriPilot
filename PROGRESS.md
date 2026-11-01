@@ -73,11 +73,11 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
 - [x] **T0.4** `app/main.py`: FastAPI app with lifespan (create `data/`, `data/sources/`, `data/plans/`; init DB; seed), rotating file log `data/app.log` (~1 MB × 3) + console, and the security middleware: reject requests whose `Host` is not `localhost:8005`/`127.0.0.1:8005` (403); for non-GET/HEAD/OPTIONS reject when `Origin` (or `Referer`) is present and not an allowed origin (403). Make allowed hosts configurable via `config.py` so tests can use `TestClient(base_url="http://localhost:8005")`. _Ref: TD §11.1–11.2, §12, §3 (`main.py`)_
 - [x] **T0.5** Templates & static: `base.html` (`<html lang="fa" dir="rtl">`, nav Chats / Clients / Settings, CSS logical properties), vendored `htmx.min.js` in `app/static/` (no CDN), one small `app.css`, Jinja2 with autoescape on, markdown render helper (`markdown-it-py`, `html=False`) exposed as a Jinja filter, `fmt_date` filter (UTC → local, Gregorian), and three empty-state pages (chats, clients, settings) wired to routes. _Ref: TD §2, §10, §11.4_
 - [x] **T0.6** Tests: `tests/conftest.py` (temp `DATA_DIR` via env, app/TestClient fixture), smoke test (three pages return 200), DB init idempotence (second startup doesn't duplicate/overwrite seeded settings), middleware tests (foreign `Host` → 403; POST with foreign `Origin` → 403; POST without `Origin` allowed). _Ref: TD §13, §14 P0 "Done when"_
-- [ ] **T0.G** Phase 0 gate — verify:
-  - [ ] `python run.py` serves `http://localhost:8005` with the three nav pages in RTL Persian
-  - [ ] `data/app.db` created with all tables; restart does not duplicate/overwrite seeded settings
-  - [ ] Foreign `Origin` on POST and foreign `Host` are rejected
-  - [ ] `pytest` passes
+- [x] **T0.G** Phase 0 gate — verify:
+  - [x] `python run.py` serves `http://localhost:8005` with the three nav pages in RTL Persian
+  - [x] `data/app.db` created with all tables; restart does not duplicate/overwrite seeded settings
+  - [x] Foreign `Origin` on POST and foreign `Host` are rejected
+  - [x] `pytest` passes
 
 - [ ] **R1** **Code review — Phase 0 foundation.** Scope: T0.1–T0.G. BASE = parent of the `[T0.1]` commit (see 0.6). Report: `docs/reviews/REVIEW-01.md`. _Review focus:_ schema fidelity to TD §5 (every column/CHECK/index), PRAGMAs and per-call connections, migration idempotence, seeds never overwrite, middleware correctness and bypasses (missing/`null` Origin, port variants, case, `Host` with extra parts), markdown `html=False`, autoescape, `requirements.txt` minimal, no unjustified layers. _Ref: TD §4.3, §5, §11, §12_
 - [ ] **F1** Fix findings from `REVIEW-01.md` per 0.7. _Ref: docs/reviews/REVIEW-01.md_
