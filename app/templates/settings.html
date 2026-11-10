@@ -4,11 +4,177 @@
 
 {% block content %}
 <div class="page-header">
-  <h1 class="page-title">تنظیمات سیستم</h1>
+  <div>
+    <h1 class="page-title">تنظیمات سیستم</h1>
+    <p class="text-muted">پیکربندی هوش مصنوعی، پرامپت راهنما و مشخصات سیستم</p>
+  </div>
 </div>
 
-<div class="empty-state">
-  <h3>تنظیمات هوش مصنوعی و مشخصات</h3>
-  <p>تنظیمات مدل هوش مصنوعی، پرامپت راهنما، فیلدهای مشخصات مراجع و منابع علمی در این بخش مدیریت می‌شوند.</p>
+{% if saved %}
+<div class="alert alert-success" role="alert">
+  ✓ تغییرات با موفقیت ذخیره شدند.
 </div>
+{% endif %}
+
+{% if reset_key %}
+<div class="alert alert-info" role="alert">
+  ✓ تنظیمات بخش مورد نظر به حالت پیش‌فرض بازنشانی شد.
+</div>
+{% endif %}
+
+<!-- Hidden Reset Forms for HTML5 buttons -->
+<form id="reset-cmd-claude" method="POST" action="/settings/reset" style="display:none;">
+  <input type="hidden" name="key" value="cmd_claude">
+</form>
+<form id="reset-cmd-agy" method="POST" action="/settings/reset" style="display:none;">
+  <input type="hidden" name="key" value="cmd_agy">
+</form>
+<form id="reset-cmd-codex" method="POST" action="/settings/reset" style="display:none;">
+  <input type="hidden" name="key" value="cmd_codex">
+</form>
+<form id="reset-system-prompt" method="POST" action="/settings/reset" style="display:none;">
+  <input type="hidden" name="key" value="system_prompt">
+</form>
+
+<form method="POST" action="/settings" class="settings-form">
+  <!-- Card: AI Execution & CLI -->
+  <section class="card">
+    <div class="card-header">
+      <h2 class="card-title">هوش مصنوعی و ابزار اجرایی (CLI)</h2>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">ابزار هوش مصنوعی فعال (Active CLI)</label>
+        <div class="radio-group">
+          <label class="radio-option">
+            <input type="radio" name="active_cli" value="claude" {% if settings.active_cli == 'claude' %}checked{% endif %}>
+            <span>Claude Code (<code>claude</code>)</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="active_cli" value="agy" {% if settings.active_cli == 'agy' %}checked{% endif %}>
+            <span>Google Antigravity (<code>agy</code>)</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="active_cli" value="codex" {% if settings.active_cli == 'codex' %}checked{% endif %}>
+            <span>Codex CLI (<code>codex</code>)</span>
+          </label>
+        </div>
+        <span class="form-hint">ابزاری که پرامپت‌ها و درخواست‌های ساخت برنامه غذایی به آن ارسال می‌شود.</span>
+      </div>
+
+      <div class="form-group">
+        <label for="ai_timeout_seconds" class="form-label">حداکثر زمان انتظار پاسخ (ثانیه)</label>
+        <input
+          type="number"
+          id="ai_timeout_seconds"
+          name="ai_timeout_seconds"
+          class="form-control"
+          style="max-width: 200px;"
+          min="1"
+          step="1"
+          value="{{ settings.ai_timeout_seconds }}"
+          required
+        >
+        <span class="form-hint">در صورت عدم پاسخ CLI در این بازه، فرآیند متوقف شده و خطای زمان انقضا گزارش می‌شود.</span>
+      </div>
+
+      <div class="form-group">
+        <div class="field-header">
+          <label for="cmd_claude" class="form-label">قالب دستور Claude</label>
+          <button type="submit" form="reset-cmd-claude" class="btn btn-secondary btn-sm">بازنشانی به پیش‌فرض</button>
+        </div>
+        <input
+          type="text"
+          id="cmd_claude"
+          name="cmd_claude"
+          class="form-control form-control-mono"
+          value="{{ settings.cmd_claude }}"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <div class="field-header">
+          <label for="cmd_agy" class="form-label">قالب دستور AGY</label>
+          <button type="submit" form="reset-cmd-agy" class="btn btn-secondary btn-sm">بازنشانی به پیش‌فرض</button>
+        </div>
+        <input
+          type="text"
+          id="cmd_agy"
+          name="cmd_agy"
+          class="form-control form-control-mono"
+          value="{{ settings.cmd_agy }}"
+          required
+        >
+      </div>
+
+      <div class="form-group">
+        <div class="field-header">
+          <label for="cmd_codex" class="form-label">قالب دستور Codex</label>
+          <button type="submit" form="reset-cmd-codex" class="btn btn-secondary btn-sm">بازنشانی به پیش‌فرض</button>
+        </div>
+        <input
+          type="text"
+          id="cmd_codex"
+          name="cmd_codex"
+          class="form-control form-control-mono"
+          value="{{ settings.cmd_codex }}"
+          required
+        >
+        <span class="form-hint">
+          نکته: در صورت قرار دادن <code>{prompt}</code>، متن پرامپت در آن جایگزین می‌شود؛ در غیر این صورت پرامپت از طریق ورودی استاندارد (stdin) به ابزار تحویل داده خواهد شد.
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Card: System Prompt -->
+  <section class="card">
+    <div class="card-header">
+      <h2 class="card-title">پرامپت سیستمی و راهنمای مربی (System Prompt)</h2>
+      <button type="submit" form="reset-system-prompt" class="btn btn-secondary btn-sm">بازنشانی به پیش‌فرض</button>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <textarea
+          id="system_prompt"
+          name="system_prompt"
+          rows="12"
+          class="form-control form-control-mono"
+          style="white-space: pre-wrap;"
+          required
+        >{{ settings.system_prompt }}</textarea>
+        <span class="form-hint">این دستورالعمل‌ها به عنوان زمینه ثابت و سیاست‌های کاری هوش مصنوعی در ابتدای هر پرامپت قرار می‌گیرند.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Card: General / Diet Plan Settings -->
+  <section class="card">
+    <div class="card-header">
+      <h2 class="card-title">تنظیمات برنامه غذایی</h2>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label for="default_plan_duration" class="form-label">مدت پیش‌فرض برنامه غذایی</label>
+        <input
+          type="text"
+          id="default_plan_duration"
+          name="default_plan_duration"
+          class="form-control"
+          style="max-width: 300px;"
+          value="{{ settings.default_plan_duration }}"
+          required
+        >
+        <span class="form-hint">متن آزادی که به عنوان بازه زمانی پیش‌فرض برنامه به مدل اعلام می‌شود (مثال: یک هفته، ۲۱ روز، یک ماه).</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Form Actions -->
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">ذخیره تنظیمات</button>
+  </div>
+</form>
 {% endblock %}
+

@@ -144,3 +144,67 @@ def init_db(db_path: Path | str | None = None) -> None:
 def current_user_id() -> int:
     """Returns the current user ID for v1 (default: 1)."""
     return 1
+
+
+def get_settings(conn: sqlite3.Connection | None = None) -> dict[str, str]:
+    """Retrieve all settings as a dictionary, with fallbacks to defaults."""
+    result = dict(defaults.DEFAULT_SETTINGS)
+    if conn is not None:
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        for r in rows:
+            result[r["key"]] = r["value"]
+    else:
+        with connect() as c:
+            rows = c.execute("SELECT key, value FROM settings").fetchall()
+            for r in rows:
+                result[r["key"]] = r["value"]
+    return result
+
+
+def get_setting(key: str, default: str | None = None, conn: sqlite3.Connection | None = None) -> str:
+    """Retrieve a single setting value by key."""
+    if conn is not None:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+        if row is not None:
+            return row["value"]
+    else:
+        with connect() as c:
+            row = c.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+            if row is not None:
+                return row["value"]
+    if default is not None:
+        return default
+    return defaults.DEFAULT_SETTINGS.get(key, "")
+
+
+def update_setting(key: str, value: str, conn: sqlite3.Connection | None = None) -> None:
+    """Update or insert a setting key-value pair."""
+    if conn is not None:
+        conn.execute(
+            "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, value),
+        )
+    else:
+        with connect() as c:
+            c.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+
+
+def update_settings(items: dict[str, str], conn: sqlite3.Connection | None = None) -> None:
+    """Update or insert multiple settings in a single transaction."""
+    if conn is not None:
+        for k, v in items.items():
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (k, v),
+            )
+    else:
+        with connect() as c:
+            for k, v in items.items():
+                c.execute(
+                    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    (k, v),
+                )
+
