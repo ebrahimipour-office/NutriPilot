@@ -18,8 +18,8 @@ Phase 0 establishes a clean, minimal foundation strictly adhering to the "Boring
 - **Location:** `app/main.py:59-67` (TD §11.2)
 - **Description:** In `SecurityGuardMiddleware.dispatch`, the Origin/Referer check uses `if origin is not None: ... elif referer: ...`. If a state-changing request (POST/PUT/DELETE) carries both headers (e.g. via an adversarial proxy or crafted client), only `Origin` is evaluated and `Referer` is bypassed. While standard browsers enforce `Origin`, checking both headers when present provides stronger defense-in-depth against header tampering and misconfigured proxies.
 - **Suggested fix:** If `origin is not None`, validate that `origin_clean in allowed_origins`. If `referer` is also present, validate that `ref_origin in allowed_origins` as well before allowing the request to proceed.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Updated SecurityGuardMiddleware to evaluate both Origin and Referer headers against allowed origins when present, adding regression tests in test_middleware.py.
 
 ### R1-02 — Atomicity of user_version update with executescript in run_migrations
 - **Severity:** Medium
@@ -27,8 +27,8 @@ Phase 0 establishes a clean, minimal foundation strictly adhering to the "Boring
 - **Location:** `app/db.py:119-121` (TD §5 notes)
 - **Description:** `sqlite3.Cursor.executescript` automatically issues a `COMMIT` before running the SQL script and executes the script in its own internal transaction. However, `cur.execute(f"PRAGMA user_version = {idx}")` runs in a separate step after `executescript`. If execution is aborted between the two statements (e.g. process termination or power loss), the schema could be applied while `user_version` remains at the previous number, causing subsequent startup attempts to fail on duplicate table creation.
 - **Suggested fix:** Include the `PRAGMA user_version = {idx};` directly at the end of each migration SQL script executed by `executescript`, ensuring the schema statements and version update are executed and committed together.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Included PRAGMA user_version statement inside each migration script string passed to cur.executescript for atomic script-level execution.
 
 ### R1-03 — Default ALLOWED_HOSTS includes unadorned localhost and 127.0.0.1 without port
 - **Severity:** Low
@@ -36,8 +36,8 @@ Phase 0 establishes a clean, minimal foundation strictly adhering to the "Boring
 - **Location:** `app/config.py:45-46` (TD §11.2)
 - **Description:** TD §11.2 specifies rejecting any request whose `Host` header is not `localhost:8005` or `127.0.0.1:8005` (to prevent DNS rebinding attacks). `config.get_allowed_hosts()` currently includes `"localhost"` and `"127.0.0.1"` without the port. While localhost resolution is local, omitting the port allows requests targeted at port 80/default port if forwarded to 8005.
 - **Suggested fix:** Restrict default `get_allowed_hosts()` to `{f"localhost:{PORT}".lower(), f"127.0.0.1:{PORT}".lower(), "testserver"}`.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Restricted default ALLOWED_HOSTS to port-specific entries (localhost:8005, 127.0.0.1:8005) and testserver.
 
 ### R1-04 — DeprecationWarning in Jinja2Templates autoescape option
 - **Severity:** Low
@@ -45,8 +45,8 @@ Phase 0 establishes a clean, minimal foundation strictly adhering to the "Boring
 - **Location:** `app/templating.py:30`
 - **Description:** Passing `autoescape=True` as a keyword argument to `Jinja2Templates` raises `DeprecationWarning: Extra environment options are deprecated. Use a preconfigured jinja2.Environment instead.` in current Starlette versions.
 - **Suggested fix:** Construct a preconfigured `jinja2.Environment` with `FileSystemLoader` and `select_autoescape(["html", "xml"])`, then initialize `Jinja2Templates(env=env)`.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Initialized Jinja2 Environment explicitly with FileSystemLoader and select_autoescape, resolving the Starlette deprecation warning.
 
 ### R1-05 — Track auto-code-ai.log in .gitignore
 - **Severity:** Low
@@ -54,8 +54,8 @@ Phase 0 establishes a clean, minimal foundation strictly adhering to the "Boring
 - **Location:** `.gitignore`
 - **Description:** An untracked file `auto-code-ai.log` appeared in the repository root from automated CLI runs. The `.gitignore` file should ignore `*.log` in the root and subdirectories (except `data/` which is already ignored).
 - **Suggested fix:** Add `*.log` to `.gitignore`.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Added *.log to .gitignore.
 
 ## Positive notes (optional)
 - **Zero ORM / Zero Abstraction Overhead:** `app/db.py` uses stdlib `sqlite3` cleanly with connection-level WAL mode, foreign keys, and busy timeout.

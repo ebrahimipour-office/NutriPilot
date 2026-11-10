@@ -117,8 +117,7 @@ def run_migrations(conn: sqlite3.Connection) -> None:
     current_version = row[0] if row else 0
 
     for idx, migration_sql in enumerate(MIGRATIONS[current_version:], start=current_version + 1):
-        cur.executescript(migration_sql)
-        cur.execute(f"PRAGMA user_version = {idx}")
+        cur.executescript(f"{migration_sql}\nPRAGMA user_version = {idx};\n")
 
 
 def seed_defaults(conn: sqlite3.Connection) -> None:

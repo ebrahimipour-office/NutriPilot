@@ -1,5 +1,6 @@
 # Data directory (DB, logs, uploaded sources, plans)
 data/
+*.log
 
 # Python caches and bytecode
 __pycache__/

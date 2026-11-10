@@ -60,7 +60,8 @@ class SecurityGuardMiddleware(BaseHTTPMiddleware):
                 origin_clean = origin.strip().rstrip("/").lower()
                 if origin_clean not in allowed_origins:
                     return Response("Forbidden Origin", status_code=403)
-            elif referer:
+
+            if referer:
                 parsed = urlparse(referer.strip())
                 ref_origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/").lower()
                 if ref_origin not in allowed_origins:

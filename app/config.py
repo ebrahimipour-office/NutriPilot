@@ -42,8 +42,6 @@ def get_allowed_hosts() -> set[str]:
     return {
         f"localhost:{PORT}".lower(),
         f"127.0.0.1:{PORT}".lower(),
-        "localhost",
-        "127.0.0.1",
         "testserver",
     }
 

@@ -77,3 +77,37 @@ def test_get_ignores_foreign_origin(client):
     # GET/HEAD/OPTIONS are safe methods; foreign Origin is not rejected
     res = client.get("/ping", headers={"origin": "http://evil.com"})
     assert res.status_code == 200
+
+
+def test_post_dual_origin_and_referer(client):
+    # Both valid -> allowed
+    res = client.post(
+        "/ping",
+        headers={
+            "origin": "http://localhost:8005",
+            "referer": "http://localhost:8005/clients",
+        },
+    )
+    assert res.status_code == 200
+
+    # Valid origin, but foreign referer -> rejected
+    res = client.post(
+        "/ping",
+        headers={
+            "origin": "http://localhost:8005",
+            "referer": "http://evil.com/clients",
+        },
+    )
+    assert res.status_code == 403
+    assert "Forbidden Referer" in res.text
+
+    # Foreign origin, valid referer -> rejected
+    res = client.post(
+        "/ping",
+        headers={
+            "origin": "http://evil.com",
+            "referer": "http://localhost:8005/clients",
+        },
+    )
+    assert res.status_code == 403
+    assert "Forbidden Origin" in res.text

@@ -27,6 +27,12 @@ def fmt_date(iso_str: str | None) -> str:
         return str(iso_str)
 
 
-templates = Jinja2Templates(directory=str(config.TEMPLATES_DIR), autoescape=True)
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+env = Environment(
+    loader=FileSystemLoader(str(config.TEMPLATES_DIR)),
+    autoescape=select_autoescape(["html", "xml"]),
+)
+templates = Jinja2Templates(env=env)
 templates.env.filters["render_markdown"] = render_markdown
 templates.env.filters["fmt_date"] = fmt_date
