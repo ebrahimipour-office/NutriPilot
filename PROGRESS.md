@@ -79,7 +79,7 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
   - [x] Foreign `Origin` on POST and foreign `Host` are rejected
   - [x] `pytest` passes
 
-- [ ] **R1** **Code review — Phase 0 foundation.** Scope: T0.1–T0.G. BASE = parent of the `[T0.1]` commit (see 0.6). Report: `docs/reviews/REVIEW-01.md`. _Review focus:_ schema fidelity to TD §5 (every column/CHECK/index), PRAGMAs and per-call connections, migration idempotence, seeds never overwrite, middleware correctness and bypasses (missing/`null` Origin, port variants, case, `Host` with extra parts), markdown `html=False`, autoescape, `requirements.txt` minimal, no unjustified layers. _Ref: TD §4.3, §5, §11, §12_
+- [x] **R1** **Code review — Phase 0 foundation.** Scope: T0.1–T0.G. BASE = parent of the `[T0.1]` commit (see 0.6). Report: `docs/reviews/REVIEW-01.md`. _Review focus:_ schema fidelity to TD §5 (every column/CHECK/index), PRAGMAs and per-call connections, migration idempotence, seeds never overwrite, middleware correctness and bypasses (missing/`null` Origin, port variants, case, `Host` with extra parts), markdown `html=False`, autoescape, `requirements.txt` minimal, no unjustified layers. _Ref: TD §4.3, §5, §11, §12_
 - [ ] **F1** Fix findings from `REVIEW-01.md` per 0.7. _Ref: docs/reviews/REVIEW-01.md_
 
 ---
@@ -221,7 +221,7 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
 
 | Review | Scope | Report | Critical | High | Medium | Low | Open after fixes |
 |---|---|---|---|---|---|---|---|
-| R1 | T0.1–T0.G | `docs/reviews/REVIEW-01.md` | – | – | – | – | – |
+| R1 | T0.1–T0.G | `docs/reviews/REVIEW-01.md` | 0 | 0 | 2 | 3 | 5 |
 | R2 | T1.1–T1.G | `docs/reviews/REVIEW-02.md` | – | – | – | – | – |
 | R3 | T2.1–T3.2 | `docs/reviews/REVIEW-03.md` | – | – | – | – | – |
 | R4 | T3.3–T4.1 | `docs/reviews/REVIEW-04.md` | – | – | – | – | – |
