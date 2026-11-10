@@ -22,6 +22,18 @@
 </div>
 {% endif %}
 
+{% if meta_saved %}
+<div class="alert alert-success" role="alert">
+  ✓ فیلد متا با موفقیت ذخیره شد.
+</div>
+{% endif %}
+
+{% if meta_deleted %}
+<div class="alert alert-info" role="alert">
+  ✓ فیلد متا حذف گردید.
+</div>
+{% endif %}
+
 <!-- Hidden Reset Forms for HTML5 buttons -->
 <form id="reset-cmd-claude" method="POST" action="/settings/reset" style="display:none;">
   <input type="hidden" name="key" value="cmd_claude">
@@ -176,5 +188,122 @@
     <button type="submit" class="btn btn-primary">ذخیره تنظیمات</button>
   </div>
 </form>
+
+<!-- Card: Client Meta Fields Management -->
+<section class="card" id="meta-fields-section">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">مشخصات شاگرد و کلیدهای متا (Meta Fields)</h2>
+      <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">
+        فیلدهای ساختاریافته مشخصات شاگرد (مانند سن، وزن، قد، هدف) که هوش مصنوعی در استخراج اطلاعات از آن‌ها استفاده می‌کند.
+      </p>
+    </div>
+  </div>
+  <div class="card-body">
+    {% if meta_fields %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 80px;">ترتیب</th>
+            <th>کلید انگلیسی (Key)</th>
+            <th>عنوان فارسی (Label)</th>
+            <th style="width: 150px;">جابجایی</th>
+            <th style="width: 120px;">عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for field in meta_fields %}
+          <tr>
+            <td>
+              <span class="badge">{{ field.sort_order }}</span>
+            </td>
+            <td>
+              <code>{{ field.key }}</code>
+            </td>
+            <td>
+              <!-- Inline edit form for label -->
+              <form method="POST" action="/settings/meta-fields/{{ field.id }}/edit" class="inline-form">
+                <input
+                  type="text"
+                  name="label"
+                  value="{{ field.label }}"
+                  class="form-control form-control-sm"
+                  style="max-width: 200px;"
+                  required
+                >
+                <button type="submit" class="btn btn-secondary btn-sm">ویرایش عنوان</button>
+              </form>
+            </td>
+            <td>
+              <div class="action-group">
+                <form method="POST" action="/settings/meta-fields/{{ field.id }}/move" style="display:inline;">
+                  <input type="hidden" name="direction" value="up">
+                  <button type="submit" class="btn btn-secondary btn-sm" {% if loop.first %}disabled{% endif %} title="انتقال به بالا">↑ بالا</button>
+                </form>
+                <form method="POST" action="/settings/meta-fields/{{ field.id }}/move" style="display:inline;">
+                  <input type="hidden" name="direction" value="down">
+                  <button type="submit" class="btn btn-secondary btn-sm" {% if loop.last %}disabled{% endif %} title="انتقال به پایین">↓ پایین</button>
+                </form>
+              </div>
+            </td>
+            <td>
+              <form method="POST" action="/settings/meta-fields/{{ field.id }}/delete" onsubmit="return confirm('آیا از حذف این فیلد متا اطمینان دارید؟');" style="display:inline;">
+                <button type="submit" class="btn btn-danger btn-sm">حذف فیلد</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 2rem 1rem; margin-block: 1rem;">
+      <h3>هنوز هیچ فیلد متایی تعریف نشده است</h3>
+      <p class="text-muted">با استفاده از فرم زیر، کلیدهای متای مورد نیاز برای ثبت مشخصات شاگردان را اضافه کنید.</p>
+    </div>
+    {% endif %}
+
+    <!-- Add New Meta Field Form -->
+    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+      <h3 style="font-size: 1rem; margin-bottom: 1rem;">افزودن فیلد متای جدید</h3>
+      <form method="POST" action="/settings/meta-fields" class="add-meta-form">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+          <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="new_meta_key" class="form-label">کلید انگلیسی (Key)</label>
+            <input
+              type="text"
+              id="new_meta_key"
+              name="key"
+              class="form-control form-control-mono"
+              placeholder="مثال: target_weight"
+              pattern="[a-z0-9_]+"
+              required
+            >
+            <span class="form-hint">فقط حروف کوچک انگلیسی، ارقام و _</span>
+          </div>
+
+          <div class="form-group" style="flex: 1.5; min-width: 220px; margin-bottom: 0;">
+            <label for="new_meta_label" class="form-label">عنوان فارسی (Label)</label>
+            <input
+              type="text"
+              id="new_meta_label"
+              name="label"
+              class="form-control"
+              placeholder="مثال: وزن هدف (کیلوگرم)"
+              required
+            >
+            <span class="form-hint">نامی که در فرم پرونده شاگرد نمایش داده می‌شود</span>
+          </div>
+
+          <div>
+            <button type="submit" class="btn btn-primary" style="height: 42px;">افزودن فیلد</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
 {% endblock %}
+
 

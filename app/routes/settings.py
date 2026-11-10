@@ -35,8 +35,11 @@ def _validate_active_cli(cli: str) -> str:
 @router.get("/settings", response_class=HTMLResponse)
 async def view_settings(request: Request):
     current_settings = db.get_settings()
+    meta_fields = db.active_meta_fields()
     saved = request.query_params.get("saved") == "1"
     reset_key = request.query_params.get("reset")
+    meta_saved = request.query_params.get("meta_saved") == "1"
+    meta_deleted = request.query_params.get("meta_deleted") == "1"
 
     return templates.TemplateResponse(
         request=request,
@@ -44,8 +47,11 @@ async def view_settings(request: Request):
         context={
             "active_nav": "settings",
             "settings": current_settings,
+            "meta_fields": meta_fields,
             "saved": saved,
             "reset_key": reset_key,
+            "meta_saved": meta_saved,
+            "meta_deleted": meta_deleted,
         },
     )
 
@@ -173,5 +179,82 @@ async def update_prompt_settings(
         db.update_settings(updates)
 
     return RedirectResponse(url="/settings?saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/meta-fields", response_class=RedirectResponse)
+async def create_meta_field(
+    key: Annotated[str, Form()],
+    label: Annotated[str, Form()],
+):
+    try:
+        db.add_meta_field(key=key, label=label)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(url="/settings?meta_saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/meta-fields/{field_id}/edit", response_class=RedirectResponse)
+async def edit_meta_field_label(
+    field_id: int,
+    label: Annotated[str, Form()],
+):
+    try:
+        db.update_meta_field_label(field_id=field_id, label=label)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(url="/settings?meta_saved=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/meta-fields/{field_id}/delete", response_class=RedirectResponse)
+async def delete_meta_field(field_id: int):
+    try:
+        db.soft_delete_meta_field(field_id=field_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(url="/settings?meta_deleted=1", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/meta-fields/{field_id}/move", response_class=RedirectResponse)
+async def move_meta_field_order(
+    field_id: int,
+    direction: Annotated[str, Form()],
+):
+    try:
+        db.move_meta_field(field_id=field_id, direction=direction)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/meta-fields/reorder", response_class=RedirectResponse)
+async def reorder_meta_fields_endpoint(
+    order: Annotated[str | None, Form()] = None,
+    field_ids: Annotated[list[int] | None, Form()] = None,
+):
+    ids: list[int] = []
+    if field_ids:
+        ids = field_ids
+    elif order:
+        try:
+            ids = [int(x.strip()) for x in order.split(",") if x.strip()]
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order format")
+    if not ids:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No field IDs provided")
+    db.reorder_meta_fields(ids)
+    return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
+
+
+@router.post("/settings/meta-fields/{field_id}", response_class=RedirectResponse)
+async def update_or_delete_meta_field(
+    field_id: int,
+    label: Annotated[str | None, Form()] = None,
+    action: Annotated[str | None, Form()] = None,
+):
+    if action == "delete":
+        return await delete_meta_field(field_id)
+    if label is not None:
+        return await edit_meta_field_label(field_id, label)
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No action or label specified")
 
 

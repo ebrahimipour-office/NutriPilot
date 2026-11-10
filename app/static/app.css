@@ -304,3 +304,74 @@ body {
   color: var(--text-muted);
 }
 
+.btn-danger {
+  background-color: var(--danger-color);
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-hover);
+}
+
+.alert-danger {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.table-responsive {
+  overflow-x: auto;
+  margin-block-end: 1rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.table th, .table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: start;
+  vertical-align: middle;
+}
+
+.table th {
+  background-color: #f8fafc;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.table tr:hover td {
+  background-color: #fcfdfe;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: #f1f5f9;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.form-control-sm {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.inline-form {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
