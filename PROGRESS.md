@@ -92,11 +92,11 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
 - [x] **T1.3** Source upload service: accept only `.md` (extension check), UTF-8-decodable, size ≤ `UPLOAD_MAX_BYTES`; `name` and `description` required; generated file name `data/sources/<slug>-<short-id>.md` (uploaded filename never used as a path); optionally write self-describing front-matter without touching the body; insert `sources` row with path relative to `data/`. _Ref: TD §6.1, §8.4 (Upload), §11.5; FR-21…22_
 - [x] **T1.4** Source management + startup scan: list, toggle `enabled`, edit name/description, soft delete; `read_front_matter(path)` in `app/parsers.py`; startup scan of `data/sources/*.md` registers every file whose relative path is **not in `sources` at all (including soft-deleted rows)** using front-matter `name`/`description` (fallback: filename / empty description + log warning). Soft-deleted sources must never re-register. _Ref: TD §7.3 (front-matter helpers), §8.4, §5 (`sources.file_path UNIQUE`); FR-23…24_
 - [x] **T1.5** Tests for Phase 1: settings seed not overwritten after change; reset-to-default; meta key validation/uniqueness/re-add after delete; upload rejects non-`.md`, non-UTF-8, oversize, missing name/description; generated filename ≠ uploaded name; scan registers dropped file, ignores already-known and soft-deleted paths. _Ref: TD §13, §14 P1 "Done when"_
-- [ ] **T1.G** Phase 1 gate — verify:
-  - [ ] All settings persist across restarts
-  - [ ] Duplicate live meta key rejected; re-adding after soft delete works
-  - [ ] Non-`.md` upload rejected; uploaded source appears in list and on disk under `data/sources/`
-  - [ ] File dropped into `data/sources/` is registered on next start; after soft delete it is **not** re-registered on the following start
+- [x] **T1.G** Phase 1 gate — verify:
+  - [x] All settings persist across restarts
+  - [x] Duplicate live meta key rejected; re-adding after soft delete works
+  - [x] Non-`.md` upload rejected; uploaded source appears in list and on disk under `data/sources/`
+  - [x] File dropped into `data/sources/` is registered on next start; after soft delete it is **not** re-registered on the following start
 
 - [ ] **R2** **Code review — Phase 1 settings/meta fields/sources.** Scope: T1.1–T1.G + `[F1]` commits. BASE = commit tagged `[R1]`. Report: `docs/reviews/REVIEW-02.md`. _Review focus:_ upload handling (extension, UTF-8, size, generated path, traversal, name collisions), scan semantics vs `UNIQUE(file_path)`, slug validation + partial unique index behaviour, validation of settings input, every read filters `deleted_at`, POST-only mutations, template escaping. _Ref: TD §6.1, §8.4, §11.5_
 - [ ] **F2** Fix findings from `REVIEW-02.md` per 0.7. _Ref: docs/reviews/REVIEW-02.md_
