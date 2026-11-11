@@ -1,7 +1,8 @@
 from typing import Annotated
-from fastapi import APIRouter, Form, HTTPException, Request, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app import db, defaults
+from app.services import sources as source_service
 from app.templating import templates
 
 router = APIRouter()
@@ -36,10 +37,12 @@ def _validate_active_cli(cli: str) -> str:
 async def view_settings(request: Request):
     current_settings = db.get_settings()
     meta_fields = db.active_meta_fields()
+    sources = db.active_sources()
     saved = request.query_params.get("saved") == "1"
     reset_key = request.query_params.get("reset")
     meta_saved = request.query_params.get("meta_saved") == "1"
     meta_deleted = request.query_params.get("meta_deleted") == "1"
+    source_uploaded = request.query_params.get("source_uploaded") == "1"
 
     return templates.TemplateResponse(
         request=request,
@@ -48,10 +51,12 @@ async def view_settings(request: Request):
             "active_nav": "settings",
             "settings": current_settings,
             "meta_fields": meta_fields,
+            "sources": sources,
             "saved": saved,
             "reset_key": reset_key,
             "meta_saved": meta_saved,
             "meta_deleted": meta_deleted,
+            "source_uploaded": source_uploaded,
         },
     )
 
@@ -256,5 +261,28 @@ async def update_or_delete_meta_field(
     if label is not None:
         return await edit_meta_field_label(field_id, label)
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No action or label specified")
+
+
+@router.post("/settings/sources/upload", response_class=RedirectResponse)
+@router.post("/settings/sources", response_class=RedirectResponse)
+async def upload_source_endpoint(
+    name: Annotated[str, Form()],
+    description: Annotated[str, Form()],
+    file: UploadFile = File(...),
+):
+    try:
+        content = await file.read()
+        source_service.upload_source(
+            name=name,
+            description=description,
+            filename=file.filename or "",
+            content=content,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(
+        url="/settings?source_uploaded=1",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 

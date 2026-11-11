@@ -34,6 +34,12 @@
 </div>
 {% endif %}
 
+{% if source_uploaded %}
+<div class="alert alert-success" role="alert">
+  ✓ منبع جدید با موفقیت آپلود و ذخیره شد.
+</div>
+{% endif %}
+
 <!-- Hidden Reset Forms for HTML5 buttons -->
 <form id="reset-cmd-claude" method="POST" action="/settings/reset" style="display:none;">
   <input type="hidden" name="key" value="cmd_claude">
@@ -302,6 +308,64 @@
         </div>
       </form>
     </div>
+  </div>
+</section>
+
+<!-- Card: Sources -->
+<section class="card" style="margin-top: 1.5rem;">
+  <div class="card-header">
+    <h2 class="card-title">منابع و مراجع علمی (Sources)</h2>
+  </div>
+  <div class="card-body">
+    <p class="text-muted" style="margin-bottom: 1rem;">
+      فایل‌های Markdown (.md) حاوی دستورالعمل‌ها و مراجع رژیم‌نویسی که هوش مصنوعی در پرامپت‌ها به آن‌ها ارجاع خواهد داد.
+    </p>
+
+    <!-- Upload Source Form -->
+    <form method="POST" action="/settings/sources/upload" enctype="multipart/form-data" class="upload-source-form" style="border: 1px dashed var(--border-color); padding: 1.25rem; border-radius: 8px; background: var(--bg-surface-subtle, #f9fafb);">
+      <h3 style="font-size: 1rem; margin-bottom: 1rem;">آپلود منبع جدید (.md)</h3>
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+          <label for="source_name" class="form-label">نام منبع</label>
+          <input
+            type="text"
+            id="source_name"
+            name="name"
+            class="form-control"
+            placeholder="مثال: دستورالعمل پروتئین ورزشی"
+            required
+          >
+        </div>
+
+        <div class="form-group" style="flex: 1.5; min-width: 250px; margin-bottom: 0;">
+          <label for="source_description" class="form-label">توضیح کوتاه (چه زمانی مرجع است)</label>
+          <input
+            type="text"
+            id="source_description"
+            name="description"
+            class="form-control"
+            placeholder="مثال: مرجع تنظیم دریافت درشت‌مغذی‌ها در ورزشکاران قدرتی"
+            required
+          >
+        </div>
+
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+          <label for="source_file" class="form-label">فایل مارک‌داون (.md)</label>
+          <input
+            type="file"
+            id="source_file"
+            name="file"
+            class="form-control"
+            accept=".md"
+            required
+          >
+        </div>
+
+        <div>
+          <button type="submit" class="btn btn-primary" style="height: 42px;">آپلود منبع</button>
+        </div>
+      </div>
+    </form>
   </div>
 </section>
 {% endblock %}

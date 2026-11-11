@@ -409,3 +409,70 @@ def move_meta_field(
         with connect() as c:
             _execute(c)
 
+
+def insert_source(
+    name: str,
+    description: str,
+    file_path: str,
+    enabled: int = 1,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> int:
+    """Insert a new source record into the database."""
+    uid = user_id if user_id is not None else current_user_id()
+    now = datetime.now(timezone.utc).isoformat()
+
+    def _execute(c: sqlite3.Connection) -> int:
+        cur = c.execute(
+            """
+            INSERT INTO sources (user_id, name, description, file_path, enabled, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (uid, name.strip(), description.strip(), file_path.strip(), enabled, now),
+        )
+        return cur.lastrowid
+
+    if conn is not None:
+        return _execute(conn)
+    with connect() as c:
+        return _execute(c)
+
+
+def get_source(
+    source_id: int,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> sqlite3.Row | None:
+    """Retrieve an active source by ID."""
+    uid = user_id if user_id is not None else current_user_id()
+
+    def _execute(c: sqlite3.Connection) -> sqlite3.Row | None:
+        return c.execute(
+            "SELECT * FROM sources WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (source_id, uid),
+        ).fetchone()
+
+    if conn is not None:
+        return _execute(conn)
+    with connect() as c:
+        return _execute(c)
+
+
+def active_sources(
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> list[sqlite3.Row]:
+    """Retrieve all active sources for the user, ordered by created_at DESC, id DESC."""
+    uid = user_id if user_id is not None else current_user_id()
+
+    def _execute(c: sqlite3.Connection) -> list[sqlite3.Row]:
+        return c.execute(
+            "SELECT * FROM sources WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC",
+            (uid,),
+        ).fetchall()
+
+    if conn is not None:
+        return _execute(conn)
+    with connect() as c:
+        return _execute(c)
+
