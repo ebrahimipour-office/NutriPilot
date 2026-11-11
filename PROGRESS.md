@@ -98,7 +98,7 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
   - [x] Non-`.md` upload rejected; uploaded source appears in list and on disk under `data/sources/`
   - [x] File dropped into `data/sources/` is registered on next start; after soft delete it is **not** re-registered on the following start
 
-- [ ] **R2** **Code review — Phase 1 settings/meta fields/sources.** Scope: T1.1–T1.G + `[F1]` commits. BASE = commit tagged `[R1]`. Report: `docs/reviews/REVIEW-02.md`. _Review focus:_ upload handling (extension, UTF-8, size, generated path, traversal, name collisions), scan semantics vs `UNIQUE(file_path)`, slug validation + partial unique index behaviour, validation of settings input, every read filters `deleted_at`, POST-only mutations, template escaping. _Ref: TD §6.1, §8.4, §11.5_
+- [x] **R2** **Code review — Phase 1 settings/meta fields/sources.** Scope: T1.1–T1.G + `[F1]` commits. BASE = commit tagged `[R1]`. Report: `docs/reviews/REVIEW-02.md`. _Review focus:_ upload handling (extension, UTF-8, size, generated path, traversal, name collisions), scan semantics vs `UNIQUE(file_path)`, slug validation + partial unique index behaviour, validation of settings input, every read filters `deleted_at`, POST-only mutations, template escaping. _Ref: TD §6.1, §8.4, §11.5_
 - [ ] **F2** Fix findings from `REVIEW-02.md` per 0.7. _Ref: docs/reviews/REVIEW-02.md_
 
 ---
@@ -222,7 +222,7 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
 | Review | Scope | Report | Critical | High | Medium | Low | Open after fixes |
 |---|---|---|---|---|---|---|---|
 | R1 | T0.1–T0.G | `docs/reviews/REVIEW-01.md` | 0 | 0 | 2 | 3 | 0 |
-| R2 | T1.1–T1.G | `docs/reviews/REVIEW-02.md` | – | – | – | – | – |
+| R2 | T1.1–T1.G | `docs/reviews/REVIEW-02.md` | 0 | 0 | 2 | 3 | 5 |
 | R3 | T2.1–T3.2 | `docs/reviews/REVIEW-03.md` | – | – | – | – | – |
 | R4 | T3.3–T4.1 | `docs/reviews/REVIEW-04.md` | – | – | – | – | – |
 | R5 | T4.2–T5.G | `docs/reviews/REVIEW-05.md` | – | – | – | – | – |
