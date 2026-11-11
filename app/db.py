@@ -476,3 +476,104 @@ def active_sources(
     with connect() as c:
         return _execute(c)
 
+
+def update_source(
+    source_id: int,
+    name: str,
+    description: str,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> None:
+    """Update name and description of an active source."""
+    clean_name = name.strip() if name else ""
+    if not clean_name:
+        raise ValueError("Source name is required")
+    clean_desc = description.strip() if description else ""
+    uid = user_id if user_id is not None else current_user_id()
+
+    def _execute(c: sqlite3.Connection) -> None:
+        res = c.execute(
+            "UPDATE sources SET name = ?, description = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (clean_name, clean_desc, source_id, uid),
+        )
+        if res.rowcount == 0:
+            raise ValueError(f"Source with id {source_id} not found or deleted")
+
+    if conn is not None:
+        _execute(conn)
+    else:
+        with connect() as c:
+            _execute(c)
+
+
+def toggle_source_enabled(
+    source_id: int,
+    enabled: int | None = None,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> int:
+    """Toggle or set the enabled flag of an active source (0 or 1)."""
+    uid = user_id if user_id is not None else current_user_id()
+
+    def _execute(c: sqlite3.Connection) -> int:
+        row = c.execute(
+            "SELECT enabled FROM sources WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (source_id, uid),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Source with id {source_id} not found or deleted")
+
+        new_val = enabled if enabled is not None else (0 if row["enabled"] else 1)
+        if new_val not in (0, 1):
+            raise ValueError("enabled must be 0 or 1")
+
+        c.execute(
+            "UPDATE sources SET enabled = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (new_val, source_id, uid),
+        )
+        return new_val
+
+    if conn is not None:
+        return _execute(conn)
+    with connect() as c:
+        return _execute(c)
+
+
+def soft_delete_source(
+    source_id: int,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> None:
+    """Soft delete a source by setting its deleted_at timestamp. Never deletes physically."""
+    uid = user_id if user_id is not None else current_user_id()
+    now = datetime.now(timezone.utc).isoformat()
+
+    def _execute(c: sqlite3.Connection) -> None:
+        res = c.execute(
+            "UPDATE sources SET deleted_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (now, source_id, uid),
+        )
+        if res.rowcount == 0:
+            raise ValueError(f"Source with id {source_id} not found or already deleted")
+
+    if conn is not None:
+        _execute(conn)
+    else:
+        with connect() as c:
+            _execute(c)
+
+
+def get_all_source_file_paths(
+    conn: sqlite3.Connection | None = None,
+) -> set[str]:
+    """Retrieve all file paths in sources table, INCLUDING soft-deleted rows."""
+    def _execute(c: sqlite3.Connection) -> set[str]:
+        rows = c.execute("SELECT file_path FROM sources").fetchall()
+        return {r["file_path"] for r in rows}
+
+    if conn is not None:
+        return _execute(conn)
+    with connect() as c:
+        return _execute(c)
+
+

@@ -43,6 +43,8 @@ async def view_settings(request: Request):
     meta_saved = request.query_params.get("meta_saved") == "1"
     meta_deleted = request.query_params.get("meta_deleted") == "1"
     source_uploaded = request.query_params.get("source_uploaded") == "1"
+    source_updated = request.query_params.get("source_updated") == "1"
+    source_deleted = request.query_params.get("source_deleted") == "1"
 
     return templates.TemplateResponse(
         request=request,
@@ -57,6 +59,8 @@ async def view_settings(request: Request):
             "meta_saved": meta_saved,
             "meta_deleted": meta_deleted,
             "source_uploaded": source_uploaded,
+            "source_updated": source_updated,
+            "source_deleted": source_deleted,
         },
     )
 
@@ -284,5 +288,66 @@ async def upload_source_endpoint(
         url="/settings?source_uploaded=1",
         status_code=status.HTTP_303_SEE_OTHER,
     )
+
+
+@router.post("/settings/sources/{source_id}/toggle", response_class=RedirectResponse)
+async def toggle_source_endpoint(source_id: int):
+    try:
+        db.toggle_source_enabled(source_id=source_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(
+        url="/settings?source_updated=1",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/settings/sources/{source_id}/edit", response_class=RedirectResponse)
+async def edit_source_endpoint(
+    source_id: int,
+    name: Annotated[str, Form()],
+    description: Annotated[str, Form()] = "",
+):
+    try:
+        db.update_source(
+            source_id=source_id,
+            name=name,
+            description=description,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(
+        url="/settings?source_updated=1",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/settings/sources/{source_id}/delete", response_class=RedirectResponse)
+async def delete_source_endpoint(source_id: int):
+    try:
+        db.soft_delete_source(source_id=source_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    return RedirectResponse(
+        url="/settings?source_deleted=1",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.post("/settings/sources/{source_id}", response_class=RedirectResponse)
+async def update_or_delete_source_endpoint(
+    source_id: int,
+    action: Annotated[str | None, Form()] = None,
+    name: Annotated[str | None, Form()] = None,
+    description: Annotated[str | None, Form()] = None,
+):
+    if action == "delete":
+        return await delete_source_endpoint(source_id)
+    if action == "toggle":
+        return await toggle_source_endpoint(source_id)
+    if name is not None:
+        return await edit_source_endpoint(source_id, name, description or "")
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No action or name specified")
+
 
 

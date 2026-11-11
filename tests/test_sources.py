@@ -224,3 +224,209 @@ def test_http_upload_source_invalid_extension(client):
     response = client.post("/settings/sources/upload", data=data, files=files)
     assert response.status_code == 400
     assert "Only .md files are accepted" in response.text
+
+
+def test_db_toggle_source_enabled():
+    source_id = db.insert_source(
+        name="Toggle Test",
+        description="Testing toggle",
+        file_path="sources/toggle-test.md",
+        enabled=1,
+    )
+    assert db.get_source(source_id)["enabled"] == 1
+
+    # Toggle 1 -> 0
+    new_val = db.toggle_source_enabled(source_id)
+    assert new_val == 0
+    assert db.get_source(source_id)["enabled"] == 0
+
+    # Toggle 0 -> 1
+    new_val = db.toggle_source_enabled(source_id)
+    assert new_val == 1
+    assert db.get_source(source_id)["enabled"] == 1
+
+    # Invalid source id raises ValueError
+    with pytest.raises(ValueError, match="not found or deleted"):
+        db.toggle_source_enabled(99999)
+
+
+def test_db_update_source():
+    source_id = db.insert_source(
+        name="Original Name",
+        description="Original Desc",
+        file_path="sources/update-test.md",
+    )
+
+    db.update_source(source_id, name="Updated Name", description="Updated Desc")
+    row = db.get_source(source_id)
+    assert row["name"] == "Updated Name"
+    assert row["description"] == "Updated Desc"
+
+    # Empty name rejected
+    with pytest.raises(ValueError, match="Source name is required"):
+        db.update_source(source_id, name="   ", description="Desc")
+
+    # Non-existent source raises ValueError
+    with pytest.raises(ValueError, match="not found or deleted"):
+        db.update_source(99999, name="Test", description="Desc")
+
+
+def test_db_soft_delete_source():
+    # Create file on disk
+    test_file = config.SOURCES_DIR / "delete-test.md"
+    test_file.write_text("# Content", encoding="utf-8")
+
+    source_id = db.insert_source(
+        name="To Delete",
+        description="Will be soft deleted",
+        file_path="sources/delete-test.md",
+    )
+
+    assert len(db.active_sources()) == 1
+    db.soft_delete_source(source_id)
+
+    # Invariant: active_sources() must exclude soft-deleted rows
+    assert len(db.active_sources()) == 0
+    assert db.get_source(source_id) is None
+
+    # Invariant: file on disk MUST NOT be deleted
+    assert test_file.exists()
+
+    # Deleting already deleted raises ValueError
+    with pytest.raises(ValueError, match="not found or already deleted"):
+        db.soft_delete_source(source_id)
+
+
+def test_startup_scan_with_front_matter():
+    doc_path = config.SOURCES_DIR / "expert-guide.md"
+    content = serialize_source_markdown(
+        name="راهنمای حرفه‌ای",
+        description="تنظیم کربوهیدرات در دوران حجم",
+        body_text="# Carbs in bulking\n5-7g per kg.",
+    )
+    doc_path.write_text(content, encoding="utf-8")
+
+    registered = source_service.scan_and_register_sources()
+    assert len(registered) == 1
+
+    sources = db.active_sources()
+    assert len(sources) == 1
+    assert sources[0]["name"] == "راهنمای حرفه‌ای"
+    assert sources[0]["description"] == "تنظیم کربوهیدرات در دوران حجم"
+    assert sources[0]["file_path"] == "sources/expert-guide.md"
+    assert sources[0]["enabled"] == 1
+
+
+def test_startup_scan_fallback_and_warning(caplog):
+    import logging
+    # File without front-matter
+    plain_file = config.SOURCES_DIR / "unstructured_notes.md"
+    plain_file.write_text("# Just Notes\nNo front matter here.", encoding="utf-8")
+
+    with caplog.at_level(logging.WARNING, logger="nutripilot"):
+        registered = source_service.scan_and_register_sources()
+
+    assert len(registered) == 1
+    sources = db.active_sources()
+    assert len(sources) == 1
+    assert sources[0]["name"] == "unstructured_notes.md"
+    assert sources[0]["description"] == ""
+    assert sources[0]["file_path"] == "sources/unstructured_notes.md"
+
+    # Verify fallback warning was logged
+    assert any("registered with fallback" in record.message for record in caplog.records)
+
+
+def test_startup_scan_idempotence():
+    doc_path = config.SOURCES_DIR / "sample.md"
+    doc_path.write_text("# Sample", encoding="utf-8")
+
+    reg1 = source_service.scan_and_register_sources()
+    assert len(reg1) == 1
+
+    # Second scan should register nothing
+    reg2 = source_service.scan_and_register_sources()
+    assert len(reg2) == 0
+    assert len(db.active_sources()) == 1
+
+
+def test_startup_scan_never_reregisters_soft_deleted_source():
+    doc_path = config.SOURCES_DIR / "perennial.md"
+    doc_path.write_text("# Evergreen", encoding="utf-8")
+
+    # Initial registration
+    reg1 = source_service.scan_and_register_sources()
+    assert len(reg1) == 1
+    source_id = reg1[0]
+
+    # Soft delete the source
+    db.soft_delete_source(source_id)
+    assert len(db.active_sources()) == 0
+
+    # Invariant: disk file remains
+    assert doc_path.exists()
+
+    # Subsequent scan MUST NOT re-register the soft-deleted source
+    reg2 = source_service.scan_and_register_sources()
+    assert len(reg2) == 0
+    assert len(db.active_sources()) == 0
+
+
+def test_http_source_management_endpoints(client):
+    # 1. Create a source
+    source_id = db.insert_source(
+        name="منبع تستی",
+        description="توضیح اولیه",
+        file_path="sources/test-http.md",
+        enabled=1,
+    )
+
+    # 2. Toggle via POST /settings/sources/{id}/toggle
+    resp = client.post(f"/settings/sources/{source_id}/toggle", follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings?source_updated=1"
+    assert db.get_source(source_id)["enabled"] == 0
+
+    # 3. Edit via POST /settings/sources/{id}/edit
+    edit_data = {
+        "name": "نام ویرایش شده",
+        "description": "توضیح ویرایش شده",
+    }
+    resp = client.post(f"/settings/sources/{source_id}/edit", data=edit_data, follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings?source_updated=1"
+    updated = db.get_source(source_id)
+    assert updated["name"] == "نام ویرایش شده"
+    assert updated["description"] == "توضیح ویرایش شده"
+
+    # 4. Edit with empty name returns 400
+    bad_edit = {"name": "   ", "description": "any"}
+    resp = client.post(f"/settings/sources/{source_id}/edit", data=bad_edit)
+    assert resp.status_code == 400
+
+    # 5. Dispatcher POST /settings/sources/{id}
+    disp_edit = {"name": "نام دیسپچر", "description": "توضیح دیسپچر"}
+    resp = client.post(f"/settings/sources/{source_id}", data=disp_edit, follow_redirects=False)
+    assert resp.status_code == 303
+    assert db.get_source(source_id)["name"] == "نام دیسپچر"
+
+    disp_toggle = {"action": "toggle"}
+    resp = client.post(f"/settings/sources/{source_id}", data=disp_toggle, follow_redirects=False)
+    assert resp.status_code == 303
+    assert db.get_source(source_id)["enabled"] == 1
+
+    # 6. Delete via POST /settings/sources/{id}/delete
+    resp = client.post(f"/settings/sources/{source_id}/delete", follow_redirects=False)
+    assert resp.status_code == 303
+    assert resp.headers["location"] == "/settings?source_deleted=1"
+    assert len(db.active_sources()) == 0
+
+    # 7. Check UI renders alerts and table
+    page_resp = client.get("/settings?source_updated=1")
+    assert page_resp.status_code == 200
+    assert "منبع با موفقیت به‌روزرسانی شد" in page_resp.text
+
+    del_resp = client.get("/settings?source_deleted=1")
+    assert del_resp.status_code == 200
+    assert "منبع حذف گردید" in del_resp.text
+

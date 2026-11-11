@@ -153,6 +153,16 @@ body {
   background-color: #e2e8f0;
 }
 
+.btn-success {
+  background-color: var(--success-color);
+  color: #ffffff;
+}
+
+.btn-success:hover {
+  background-color: #15803d;
+}
+
+
 .btn-sm {
   padding: 0.35rem 0.75rem;
   font-size: 0.8rem;

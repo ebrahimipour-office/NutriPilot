@@ -40,6 +40,19 @@
 </div>
 {% endif %}
 
+{% if source_updated %}
+<div class="alert alert-success" role="alert">
+  ✓ منبع با موفقیت به‌روزرسانی شد.
+</div>
+{% endif %}
+
+{% if source_deleted %}
+<div class="alert alert-info" role="alert">
+  ✓ منبع حذف گردید.
+</div>
+{% endif %}
+
+
 <!-- Hidden Reset Forms for HTML5 buttons -->
 <form id="reset-cmd-claude" method="POST" action="/settings/reset" style="display:none;">
   <input type="hidden" name="key" value="cmd_claude">
@@ -312,60 +325,128 @@
 </section>
 
 <!-- Card: Sources -->
-<section class="card" style="margin-top: 1.5rem;">
+<section class="card" style="margin-top: 1.5rem;" id="sources-section">
   <div class="card-header">
     <h2 class="card-title">منابع و مراجع علمی (Sources)</h2>
   </div>
   <div class="card-body">
-    <p class="text-muted" style="margin-bottom: 1rem;">
+    <p class="text-muted" style="margin-bottom: 1.25rem;">
       فایل‌های Markdown (.md) حاوی دستورالعمل‌ها و مراجع رژیم‌نویسی که هوش مصنوعی در پرامپت‌ها به آن‌ها ارجاع خواهد داد.
     </p>
 
+    {% if sources %}
+    <div class="table-responsive" style="margin-bottom: 1.5rem;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 100px;">وضعیت</th>
+            <th style="width: 220px;">نام منبع</th>
+            <th>توضیح کوتاه</th>
+            <th style="width: 200px;">مسیر فایل</th>
+            <th style="width: 140px;">عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for src in sources %}
+          <tr>
+            <td>
+              <form method="POST" action="/settings/sources/{{ src.id }}/toggle" style="display:inline;">
+                <button type="submit" class="btn btn-sm {% if src.enabled %}btn-success{% else %}btn-secondary{% endif %}" title="کلیک جهت تغییر وضعیت فعال/غیرفعال">
+                  {% if src.enabled %}فعال{% else %}غیرفعال{% endif %}
+                </button>
+              </form>
+            </td>
+            <td>
+              <form id="edit-source-{{ src.id }}" method="POST" action="/settings/sources/{{ src.id }}/edit" style="display:none;"></form>
+              <input
+                type="text"
+                form="edit-source-{{ src.id }}"
+                name="name"
+                value="{{ src.name }}"
+                class="form-control form-control-sm"
+                required
+              >
+            </td>
+            <td>
+              <input
+                type="text"
+                form="edit-source-{{ src.id }}"
+                name="description"
+                value="{{ src.description }}"
+                class="form-control form-control-sm"
+                placeholder="توضیح منبع..."
+              >
+            </td>
+            <td>
+              <code style="font-size: 0.8rem; word-break: break-all;">{{ src.file_path }}</code>
+            </td>
+            <td>
+              <div class="action-group">
+                <button type="submit" form="edit-source-{{ src.id }}" class="btn btn-secondary btn-sm" title="ذخیره ویرایش نام و توضیح">ذخیره</button>
+                <form method="POST" action="/settings/sources/{{ src.id }}/delete" onsubmit="return confirm('آیا از حذف این منبع اطمینان دارید؟');" style="display:inline;">
+                  <button type="submit" class="btn btn-danger btn-sm" title="حذف نرم منبع">حذف</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="padding: 1.5rem 1rem; margin-bottom: 1.5rem;">
+      <h3>هنوز هیچ منبعی ثبت نشده است</h3>
+      <p class="text-muted">می‌توانید با استفاده از فرم زیر منبع جدید آپلود کنید یا فایل‌های مارک‌داون (.md) را در پوشه <code>data/sources/</code> قرار دهید.</p>
+    </div>
+    {% endif %}
+
     <!-- Upload Source Form -->
-    <form method="POST" action="/settings/sources/upload" enctype="multipart/form-data" class="upload-source-form" style="border: 1px dashed var(--border-color); padding: 1.25rem; border-radius: 8px; background: var(--bg-surface-subtle, #f9fafb);">
+    <div style="padding-top: 1.25rem; border-top: 1px solid var(--border-color);">
       <h3 style="font-size: 1rem; margin-bottom: 1rem;">آپلود منبع جدید (.md)</h3>
-      <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
-        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-          <label for="source_name" class="form-label">نام منبع</label>
-          <input
-            type="text"
-            id="source_name"
-            name="name"
-            class="form-control"
-            placeholder="مثال: دستورالعمل پروتئین ورزشی"
-            required
-          >
-        </div>
+      <form method="POST" action="/settings/sources/upload" enctype="multipart/form-data" class="upload-source-form" style="border: 1px dashed var(--border-color); padding: 1.25rem; border-radius: 8px; background: #fafbfc;">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+          <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="source_name" class="form-label">نام منبع</label>
+            <input
+              type="text"
+              id="source_name"
+              name="name"
+              class="form-control"
+              placeholder="مثال: دستورالعمل پروتئین ورزشی"
+              required
+            >
+          </div>
 
-        <div class="form-group" style="flex: 1.5; min-width: 250px; margin-bottom: 0;">
-          <label for="source_description" class="form-label">توضیح کوتاه (چه زمانی مرجع است)</label>
-          <input
-            type="text"
-            id="source_description"
-            name="description"
-            class="form-control"
-            placeholder="مثال: مرجع تنظیم دریافت درشت‌مغذی‌ها در ورزشکاران قدرتی"
-            required
-          >
-        </div>
+          <div class="form-group" style="flex: 1.5; min-width: 250px; margin-bottom: 0;">
+            <label for="source_description" class="form-label">توضیح کوتاه (چه زمانی مرجع است)</label>
+            <input
+              type="text"
+              id="source_description"
+              name="description"
+              class="form-control"
+              placeholder="مثال: مرجع تنظیم دریافت درشت‌مغذی‌ها در ورزشکاران قدرتی"
+              required
+            >
+          </div>
 
-        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-          <label for="source_file" class="form-label">فایل مارک‌داون (.md)</label>
-          <input
-            type="file"
-            id="source_file"
-            name="file"
-            class="form-control"
-            accept=".md"
-            required
-          >
-        </div>
+          <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+            <label for="source_file" class="form-label">فایل مارک‌داون (.md)</label>
+            <input
+              type="file"
+              id="source_file"
+              name="file"
+              class="form-control"
+              accept=".md"
+              required
+            >
+          </div>
 
-        <div>
-          <button type="submit" class="btn btn-primary" style="height: 42px;">آپلود منبع</button>
+          <div>
+            <button type="submit" class="btn btn-primary" style="height: 42px;">آپلود منبع</button>
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   </div>
 </section>
 {% endblock %}

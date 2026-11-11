@@ -83,6 +83,10 @@ async def lifespan(app: FastAPI):
     db.init_db()
     logger.info("Database initialized and default settings verified.")
 
+    from app.services.sources import scan_and_register_sources
+    scan_and_register_sources()
+    logger.info("Startup sources scan completed.")
+
     yield
 
     logger.info("NutriPilot shutting down.")

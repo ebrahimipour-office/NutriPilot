@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import secrets
@@ -7,7 +8,9 @@ import unicodedata
 from pathlib import Path
 
 from app import config, db
-from app.parsers import serialize_source_markdown
+from app.parsers import read_front_matter, serialize_source_markdown
+
+logger = logging.getLogger("nutripilot")
 
 
 def slugify(text: str) -> str:
@@ -118,3 +121,84 @@ def upload_source(
         "file_path": rel_path,
         "abs_path": abs_path,
     }
+
+
+def scan_and_register_sources(
+    sources_dir: Path | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> list[int]:
+    """
+    Startup scan of data/sources/*.md:
+    Registers every file whose relative path is not in sources at all
+    (including soft-deleted rows) using front-matter name/description
+    (fallback: filename / empty description + log warning).
+    Soft-deleted sources must never re-register.
+    """
+    target_dir = sources_dir if sources_dir is not None else config.SOURCES_DIR
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    registered_ids: list[int] = []
+
+    def _scan(c: sqlite3.Connection) -> list[int]:
+        known_paths = db.get_all_source_file_paths(conn=c)
+        md_files = sorted(target_dir.glob("*.md"))
+
+        for file_path in md_files:
+            if not file_path.is_file():
+                continue
+
+            rel_path = f"sources/{file_path.name}"
+            if rel_path in known_paths:
+                continue
+
+            # Read front-matter
+            fm = read_front_matter(file_path)
+            raw_name = fm.get("name")
+            raw_desc = fm.get("description")
+
+            fallback_name = False
+            fallback_desc = False
+
+            if raw_name is not None and str(raw_name).strip():
+                name = str(raw_name).strip()
+            else:
+                name = file_path.name
+                fallback_name = True
+
+            if raw_desc is not None and str(raw_desc).strip():
+                description = str(raw_desc).strip()
+            else:
+                description = ""
+                fallback_desc = True
+
+            if fallback_name or fallback_desc:
+                logger.warning(
+                    "Startup scan: source '%s' registered with fallback metadata (name='%s', description='%s')",
+                    rel_path,
+                    name,
+                    description,
+                )
+            else:
+                logger.info(
+                    "Startup scan: source '%s' registered from front-matter (name='%s')",
+                    rel_path,
+                    name,
+                )
+
+            new_id = db.insert_source(
+                name=name,
+                description=description,
+                file_path=rel_path,
+                enabled=1,
+                conn=c,
+            )
+            known_paths.add(rel_path)
+            registered_ids.append(new_id)
+
+        return registered_ids
+
+    if conn is not None:
+        return _scan(conn)
+    with db.connect() as c:
+        return _scan(c)
+
