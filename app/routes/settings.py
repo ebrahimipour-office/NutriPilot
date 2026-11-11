@@ -182,7 +182,7 @@ async def update_prompt_settings(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="system_prompt cannot be empty")
         updates["system_prompt"] = system_prompt.strip()
     if default_plan_duration is not None:
-        updates["default_plan_duration"] = default_plan_duration.strip()
+        updates["default_plan_duration"] = default_plan_duration.strip() or "یک هفته"
 
     if updates:
         db.update_settings(updates)
@@ -250,6 +250,8 @@ async def reorder_meta_fields_endpoint(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid order format")
     if not ids:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No field IDs provided")
+    if any(i <= 0 for i in ids):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Field IDs must be positive integers")
     db.reorder_meta_fields(ids)
     return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)
 

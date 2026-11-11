@@ -195,6 +195,14 @@ def test_meta_fields_http_endpoints(client):
     fields_after_reorder = db.active_meta_fields()
     assert fields_after_reorder[0]["id"] == f1["id"]
 
+    # Regression test R2-04: Non-positive field IDs rejected with 400
+    res_bad_reorder = client.post(
+        "/settings/meta-fields/reorder",
+        data={"order": "-1,0,2"},
+    )
+    assert res_bad_reorder.status_code == 400
+    assert "positive integers" in res_bad_reorder.text
+
     # 9. Soft delete via HTTP
     res_del = client.post(
         f"/settings/meta-fields/{f1['id']}/delete",

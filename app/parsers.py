@@ -1,15 +1,20 @@
+import logging
 import re
 from pathlib import Path
 import yaml
+
+logger = logging.getLogger("nutripilot")
 
 
 def parse_front_matter(text: str) -> tuple[dict, str]:
     """
     Extracts front-matter YAML dictionary and body text from markdown.
     If no valid front-matter is present, returns ({}, text).
+    Handles UTF-8 BOM prefix if present.
     """
+    clean_text = text.lstrip("\ufeff")
     pattern = r"^---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n)?(.*)$"
-    match = re.match(pattern, text, re.DOTALL)
+    match = re.match(pattern, clean_text, re.DOTALL)
     if not match:
         return {}, text
 
@@ -32,7 +37,8 @@ def read_front_matter(path: str | Path) -> dict:
         content = p.read_text(encoding="utf-8", errors="replace")
         data, _ = parse_front_matter(content)
         return data
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to read front-matter from %s: %s", p, e)
         return {}
 
 

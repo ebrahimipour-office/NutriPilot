@@ -430,3 +430,62 @@ def test_http_source_management_endpoints(client):
     assert del_resp.status_code == 200
     assert "منبع حذف گردید" in del_resp.text
 
+
+def test_front_matter_parsing_with_utf8_bom():
+    """Regression test R2-01: UTF-8 BOM must not break front-matter parsing."""
+    raw_with_bom = "\ufeff---\nname: راهنمای ویندوز\ndescription: تست با BOM\n---\n# عنوان اصلی\nمتن بدنه."
+    fm, body = parse_front_matter(raw_with_bom)
+    assert fm == {"name": "راهنمای ویندوز", "description": "تست با BOM"}
+    assert body.strip() == "# عنوان اصلی\nمتن بدنه."
+
+
+def test_upload_source_collision_avoidance(monkeypatch):
+    """Regression test R2-02: upload_source avoids overwriting existing disk files."""
+    name = "تست تداخل نام"
+    desc = "بررسی عدم بازنویسی فایل‌های موجود"
+    content = b"# Existing content that must survive"
+
+    # Pre-create a file that matches the slug
+    slug = source_service.slugify(name)
+    colliding_file = config.SOURCES_DIR / f"{slug}-11223344.md"
+    colliding_file.write_text("Pre-existing data that must not be overwritten", encoding="utf-8")
+
+    # Sequence of short IDs: first returns '11223344' (collides), second returns '55667788' (free)
+    ids = iter(["11223344", "55667788"])
+    monkeypatch.setattr(source_service.secrets, "token_hex", lambda n: next(ids))
+
+    result = source_service.upload_source(
+        name=name,
+        description=desc,
+        filename="test.md",
+        content=content,
+    )
+
+    # Generated file must use the non-colliding ID
+    assert result["abs_path"].name == f"{slug}-55667788.md"
+    assert result["abs_path"].exists()
+
+    # Pre-existing file must remain intact
+    assert colliding_file.exists()
+    assert colliding_file.read_text(encoding="utf-8") == "Pre-existing data that must not be overwritten"
+
+
+def test_read_front_matter_logs_warning_on_unreadable_file(tmp_path, caplog):
+    """Regression test R2-05: read_front_matter logs warning when reading fails."""
+    import logging
+
+    bad_file = tmp_path / "permission_denied.md"
+    bad_file.write_text("# Test", encoding="utf-8")
+
+    def failing_read(*args, **kwargs):
+        raise PermissionError("Simulated permission error")
+
+    with caplog.at_level(logging.WARNING, logger="nutripilot"):
+        import unittest.mock
+        with unittest.mock.patch.object(Path, "read_text", side_effect=failing_read):
+            res = read_front_matter(bad_file)
+            assert res == {}
+
+    assert any("Failed to read front-matter" in record.message for record in caplog.records)
+
+

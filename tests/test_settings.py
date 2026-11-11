@@ -172,3 +172,13 @@ def test_modular_cli_and_prompt_endpoints(client):
     assert res_prompt.status_code == 303
     assert db.get_setting("system_prompt") == "Updated system prompt"
     assert db.get_setting("default_plan_duration") == "یک ماه"
+
+    # Regression test R2-03: empty default_plan_duration in /settings/prompt falls back to default
+    res_empty_duration = client.post(
+        "/settings/prompt",
+        data={"default_plan_duration": "   "},
+        follow_redirects=False,
+    )
+    assert res_empty_duration.status_code == 303
+    assert db.get_setting("default_plan_duration") == "یک هفته"
+

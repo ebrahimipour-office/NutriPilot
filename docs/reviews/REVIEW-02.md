@@ -18,8 +18,8 @@ Phase 1 implements complete settings management, dynamic meta field CRUD with pa
 - **Location:** `app/parsers.py:11-14` (TD §7.3)
 - **Description:** `parse_front_matter` matches the front-matter block using regex `r"^---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n)?(.*)$"`. When markdown files are created or saved on Windows using default tools (like Notepad), they frequently start with a Byte Order Mark (`\ufeff`). Because `re.match` checks from index 0, the leading BOM prevents the pattern from matching, causing valid front-matter metadata (`name`, `description`) to be dropped into the body text.
 - **Suggested fix:** Strip leading BOM characters (`text = text.lstrip("\ufeff")`) before executing regex pattern matching in `parse_front_matter`.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Stripped leading BOM with `text.lstrip("\ufeff")` in `parse_front_matter` and added regression test `test_front_matter_parsing_with_utf8_bom`.
 
 ### R2-02 — Avoid potential disk overwrite and data loss if generated file path already exists
 - **Severity:** Medium
@@ -27,8 +27,8 @@ Phase 1 implements complete settings management, dynamic meta field CRUD with pa
 - **Location:** `app/services/sources.py:86-115` (TD §6.1, §8.4)
 - **Description:** In `upload_source`, the generated target filename is `f"{slug}-{short_id}.md"`. `save_source_file(abs_path, file_content)` immediately writes to a temporary file and executes `os.replace(temp_name, abs_path)`. If a file already exists at `abs_path` (e.g. from a manually dropped unindexed file or hash collision), `os.replace` silently replaces it. Furthermore, if the subsequent SQLite `db.insert_source` fails (for example, due to `UNIQUE(file_path)` constraint violation), the exception handler executes `abs_path.unlink()`, permanently destroying the previously existing disk file.
 - **Suggested fix:** In `upload_source`, verify that `abs_path.exists()` is false before saving; if a collision occurs, generate a new short ID in a bounded loop until an unused path is found.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Added collision detection loop in `upload_source` verifying `not abs_path.exists()` before saving and added regression test `test_upload_source_collision_avoidance`.
 
 ### R2-03 — Inconsistent empty-string handling for default_plan_duration in modular prompt endpoint
 - **Severity:** Low
@@ -36,8 +36,8 @@ Phase 1 implements complete settings management, dynamic meta field CRUD with pa
 - **Location:** `app/routes/settings.py:184-186` (TD §9)
 - **Description:** In the main `/settings` form handler, `default_plan_duration` falls back to `"یک هفته"` if empty (`default_plan_duration.strip() or "یک هفته"`). However, in `/settings/prompt`, submitting an empty or whitespace-only `default_plan_duration` sets `updates["default_plan_duration"] = ""` without validation or fallback, persisting an empty duration string to the `settings` table.
 - **Suggested fix:** In `update_prompt_settings`, ensure `default_plan_duration` falls back to `"یک هفته"` or rejects empty input with 400 Bad Request if submitted.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Updated `update_prompt_settings` to fallback to `"یک هفته"` if empty, and added regression test in `test_settings.py`.
 
 ### R2-04 — Prevent non-positive IDs in reorder_meta_fields_endpoint
 - **Severity:** Low
@@ -45,8 +45,8 @@ Phase 1 implements complete settings management, dynamic meta field CRUD with pa
 - **Location:** `app/routes/settings.py:248-252` (TD §5.1, §8.3)
 - **Description:** When parsing the comma-separated `order` string in `reorder_meta_fields_endpoint`, integer conversion is wrapped in `int(x.strip())`. However, negative integers or zero values are not rejected prior to invoking `db.reorder_meta_fields`. While the query filters `WHERE id = ? AND deleted_at IS NULL`, validating that all submitted IDs are positive integers improves defensive input sanitation.
 - **Suggested fix:** Validate that all parsed integer IDs in `reorder_meta_fields_endpoint` are positive (`id > 0`).
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Added `any(i <= 0 for i in ids)` check raising 400 Bad Request in `reorder_meta_fields_endpoint` and added regression test in `test_meta_fields.py`.
 
 ### R2-05 — Explicit UTF-8 decoding in read_front_matter exception handling
 - **Severity:** Low
@@ -54,8 +54,8 @@ Phase 1 implements complete settings management, dynamic meta field CRUD with pa
 - **Location:** `app/parsers.py:32` (TD §7.3)
 - **Description:** `read_front_matter` uses `content = p.read_text(encoding="utf-8", errors="replace")`. While `errors="replace"` safely avoids decoding crashes on corrupted files, files with unreadable binary content or unhandled exceptions swallow errors silently returning `{}` without logging a warning.
 - **Suggested fix:** Add a logger warning when `read_front_matter` fails or encounters an exception while reading an existing file.
-- **Status:** [ ] open
-- **Resolution:** 
+- **Status:** [x] fixed
+- **Resolution:** Added logger warning when `read_front_matter` encounters an unhandled exception and added regression test `test_read_front_matter_logs_warning_on_unreadable_file`. 
 
 ## Positive notes (optional)
 - **Clean Invariant Adherence:** Every read query in `app/db.py` on live tables (`active_meta_fields`, `get_meta_field`, `active_sources`, `get_source`) strictly filters `deleted_at IS NULL`.

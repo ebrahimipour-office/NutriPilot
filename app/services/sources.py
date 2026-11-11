@@ -83,12 +83,17 @@ def upload_source(
     except UnicodeDecodeError as e:
         raise ValueError("File content must be valid UTF-8 text") from e
 
-    # Generate filename and path
+    # Generate filename and path (guarantee no collision with existing disk files)
     slug = slugify(clean_name)
-    short_id = secrets.token_hex(4)
-    file_name = f"{slug}-{short_id}.md"
-    rel_path = f"sources/{file_name}"
-    abs_path = config.SOURCES_DIR / file_name
+    for _ in range(100):
+        short_id = secrets.token_hex(4)
+        file_name = f"{slug}-{short_id}.md"
+        rel_path = f"sources/{file_name}"
+        abs_path = config.SOURCES_DIR / file_name
+        if not abs_path.exists():
+            break
+    else:
+        raise RuntimeError("Failed to generate unique filename for source")
 
     # Prepare markdown with front-matter
     file_content = serialize_source_markdown(clean_name, clean_desc, body_text)
