@@ -1,9 +1,10 @@
+import json
 import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Generator
+from typing import Any, Generator
 from app import config
 from app import defaults
 
@@ -645,22 +646,58 @@ def active_clients(
         return _execute(c)
 
 
-def update_client_name(
+def update_client(
     client_id: int,
-    name: str,
+    name: str | None = None,
+    meta_updates: dict[str, Any] | None = None,
     user_id: int | None = None,
     conn: sqlite3.Connection | None = None,
 ) -> None:
-    """Update name of an active client."""
-    clean_name = name.strip() if name else ""
-    if not clean_name:
-        raise ValueError("Client name cannot be empty")
+    """Update client name and/or merge-save meta fields in a single transaction.
+
+    Preserves unknown keys and values of soft-deleted fields.
+    Empty string values remove the corresponding key.
+    Writes JSON with ensure_ascii=False.
+    """
     uid = user_id if user_id is not None else current_user_id()
 
     def _execute(c: sqlite3.Connection) -> None:
+        row = c.execute(
+            "SELECT name, meta_json FROM clients WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (client_id, uid),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"Client with id {client_id} not found or deleted")
+
+        clean_name = row["name"]
+        if name is not None:
+            clean_name = name.strip()
+            if not clean_name:
+                raise ValueError("Client name cannot be empty")
+
+        new_meta_json = row["meta_json"]
+        if meta_updates is not None:
+            try:
+                current_meta = json.loads(new_meta_json or "{}")
+                if not isinstance(current_meta, dict):
+                    current_meta = {}
+            except Exception:
+                current_meta = {}
+
+            for k, v in meta_updates.items():
+                if v is None:
+                    continue
+                val_str = str(v).strip()
+                if val_str == "":
+                    current_meta.pop(k, None)
+                else:
+                    current_meta[k] = val_str
+
+            new_meta_json = json.dumps(current_meta, ensure_ascii=False)
+
         res = c.execute(
-            "UPDATE clients SET name = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
-            (clean_name, client_id, uid),
+            "UPDATE clients SET name = ?, meta_json = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL",
+            (clean_name, new_meta_json, client_id, uid),
         )
         if res.rowcount == 0:
             raise ValueError(f"Client with id {client_id} not found or deleted")
@@ -670,6 +707,36 @@ def update_client_name(
     else:
         with connect() as c:
             _execute(c)
+
+
+def update_client_name(
+    client_id: int,
+    name: str,
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> None:
+    """Update name of an active client."""
+    update_client(client_id=client_id, name=name, user_id=user_id, conn=conn)
+
+
+def update_client_meta(
+    client_id: int,
+    meta_updates: dict[str, Any],
+    user_id: int | None = None,
+    conn: sqlite3.Connection | None = None,
+) -> dict[str, Any]:
+    """Merge-save submitted meta keys into client's meta_json.
+
+    Preserves unknown keys and values of soft-deleted fields.
+    Empty string values remove the corresponding key.
+    Writes JSON with ensure_ascii=False.
+    """
+    update_client(client_id=client_id, meta_updates=meta_updates, user_id=user_id, conn=conn)
+    client = get_client(client_id=client_id, user_id=user_id, conn=conn)
+    try:
+        return json.loads(client["meta_json"] or "{}") if client else {}
+    except Exception:
+        return {}
 
 
 def get_client_chats(

@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import pytest
 from app import db
@@ -136,3 +137,157 @@ def test_client_detail_with_chats_and_plans(client):
     assert "برنامه کاهش وزن ۴ هفته‌ای" in res.text
     assert "v1" in res.text
     assert "پیش‌نویس" in res.text
+
+
+def test_db_client_meta_merge_save():
+    cid = db.create_client(name="سارا احمدی")
+    client_row = db.get_client(cid)
+    assert client_row["meta_json"] == "{}"
+
+    # Initial merge-save
+    meta1 = db.update_client_meta(
+        cid,
+        {"age": "28", "weight": "65", "goal": "افزایش حجم", "unknown_custom": "custom_val"},
+    )
+    assert meta1["age"] == "28"
+    assert meta1["weight"] == "65"
+    assert meta1["goal"] == "افزایش حجم"
+    assert meta1["unknown_custom"] == "custom_val"
+
+    # Verify JSON in DB has ensure_ascii=False
+    raw_row = db.get_client(cid)
+    assert "افزایش حجم" in raw_row["meta_json"]
+    assert "\\u" not in raw_row["meta_json"]
+
+    # Merge-save with empty value (clears weight), update age, add height, keep goal and unknown_custom untouched
+    meta2 = db.update_client_meta(
+        cid,
+        {"age": "29", "weight": "   ", "height": "172"},
+    )
+    assert meta2["age"] == "29"
+    assert "weight" not in meta2
+    assert meta2["height"] == "172"
+    assert meta2["goal"] == "افزایش حجم"
+    assert meta2["unknown_custom"] == "custom_val"
+
+    # Soft-deleted field preservation:
+    # Say 'secret_history' was in meta_json
+    db.update_client_meta(cid, {"secret_history": "سابقه قبلی"})
+    # Save another field only
+    meta3 = db.update_client_meta(cid, {"notes": "جلسه اول"})
+    assert meta3["secret_history"] == "سابقه قبلی"
+    assert meta3["notes"] == "جلسه اول"
+
+
+def test_client_meta_form_endpoints(client):
+    # Setup active and soft-deleted meta fields
+    f_age = db.add_meta_field("age", "سن مراجع")
+    f_weight = db.add_meta_field("weight", "وزن فعلی")
+    f_goal = db.add_meta_field("goal", "هدف رژیم")
+
+    # Soft delete 'weight'
+    db.soft_delete_meta_field(f_weight)
+
+    # Create client with meta for all 3 plus an unknown key
+    cid = db.create_client(
+        name="حسین رضایی",
+        meta_json=json.dumps(
+            {"age": "32", "weight": "85", "goal": "کاهش چربی", "legacy_key": "legacy_val"},
+            ensure_ascii=False,
+        ),
+    )
+
+    # 1. GET /clients/{cid} renders form with active meta fields only
+    res_get = client.get(f"/clients/{cid}")
+    assert res_get.status_code == 200
+    # Active fields present
+    assert 'name="meta_age"' in res_get.text
+    assert 'value="32"' in res_get.text
+    assert 'name="meta_goal"' in res_get.text
+    assert 'value="کاهش چربی"' in res_get.text
+    assert "سن مراجع" in res_get.text
+    assert "هدف رژیم" in res_get.text
+    # Soft deleted field NOT in form inputs
+    assert 'name="meta_weight"' not in res_get.text
+
+    # 2. POST /clients/{cid} - trainer edits age, clears goal, leaves name untouched
+    # Form submits active keys
+    res_post = client.post(
+        f"/clients/{cid}",
+        data={
+            "name": "حسین رضایی",
+            "meta_age": "33",
+            "meta_goal": "",  # clearing field
+        },
+        follow_redirects=False,
+    )
+    assert res_post.status_code == 303
+    assert res_post.headers["location"] == f"/clients/{cid}?saved=1"
+
+    # Check DB state
+    updated_client = db.get_client(cid)
+    saved_meta = json.loads(updated_client["meta_json"])
+
+    # Age is updated
+    assert saved_meta["age"] == "33"
+    # Goal was cleared -> removed from meta_json
+    assert "goal" not in saved_meta
+    # Soft-deleted field survived!
+    assert saved_meta["weight"] == "85"
+    # Unknown key survived!
+    assert saved_meta["legacy_key"] == "legacy_val"
+
+    # 3. Test submitting both name and meta fields simultaneously
+    res_post_both = client.post(
+        f"/clients/{cid}",
+        data={
+            "name": "حسین رضایی اصل",
+            "meta_age": "34",
+        },
+        follow_redirects=False,
+    )
+    assert res_post_both.status_code == 303
+    updated_client2 = db.get_client(cid)
+    assert updated_client2["name"] == "حسین رضایی اصل"
+    saved_meta2 = json.loads(updated_client2["meta_json"])
+    assert saved_meta2["age"] == "34"
+
+    # 4. Test submitting direct key names without meta_ prefix
+    res_post_direct = client.post(
+        f"/clients/{cid}",
+        data={
+            "age": "35",
+            "new_key": "val1",
+        },
+        follow_redirects=False,
+    )
+    assert res_post_direct.status_code == 303
+    saved_meta3 = json.loads(db.get_client(cid)["meta_json"])
+    assert saved_meta3["age"] == "35"
+    assert saved_meta3["new_key"] == "val1"
+
+
+def test_client_meta_edge_cases():
+    cid = db.create_client(name="تست لبه")
+
+    # Non-existent or deleted client
+    with pytest.raises(ValueError):
+        db.update_client(99999, meta_updates={"age": "20"})
+
+    with pytest.raises(ValueError):
+        db.update_client_meta(99999, {"age": "20"})
+
+    # Soft-deleted client cannot be updated
+    with db.connect() as conn:
+        conn.execute("UPDATE clients SET deleted_at = '2026-01-01T00:00:00Z' WHERE id = ?", (cid,))
+
+    with pytest.raises(ValueError):
+        db.update_client(cid, meta_updates={"age": "25"})
+
+    # Corrupt meta_json recovery
+    cid2 = db.create_client(name="تست خراب")
+    with db.connect() as conn:
+        conn.execute("UPDATE clients SET meta_json = 'INVALID_JSON{' WHERE id = ?", (cid2,))
+
+    meta = db.update_client_meta(cid2, {"age": "22"})
+    assert meta == {"age": "22"}

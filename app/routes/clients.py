@@ -1,3 +1,4 @@
+import json
 from typing import Annotated
 from fastapi import APIRouter, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -61,6 +62,14 @@ async def view_client(client_id: int, request: Request):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found",
         )
+    meta_fields = db.active_meta_fields()
+    try:
+        client_meta = json.loads(client["meta_json"] or "{}")
+        if not isinstance(client_meta, dict):
+            client_meta = {}
+    except Exception:
+        client_meta = {}
+
     chats = db.get_client_chats(client_id)
     plans = db.get_client_plans(client_id)
     saved = request.query_params.get("saved") == "1"
@@ -72,6 +81,8 @@ async def view_client(client_id: int, request: Request):
         context={
             "active_nav": "clients",
             "client": client,
+            "meta_fields": meta_fields,
+            "client_meta": client_meta,
             "chats": chats,
             "plans": plans,
             "saved": saved,
@@ -81,23 +92,47 @@ async def view_client(client_id: int, request: Request):
 
 
 @router.post("/clients/{client_id}", response_class=RedirectResponse)
-async def edit_client_name_endpoint(
+async def edit_client_endpoint(
     client_id: int,
-    name: Annotated[str, Form()],
+    request: Request,
 ):
-    clean_name = name.strip() if name else ""
-    if not clean_name:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Client name cannot be empty",
-        )
     client = db.get_client(client_id)
     if client is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Client not found",
         )
-    db.update_client_name(client_id, clean_name)
+
+    form = await request.form()
+    name_val = form.get("name")
+    clean_name: str | None = None
+    if name_val is not None:
+        clean_name = str(name_val).strip()
+        if not clean_name:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Client name cannot be empty",
+            )
+
+    submitted_meta: dict[str, str] = {}
+    has_meta_inputs = False
+    for k, v in form.items():
+        if k.startswith("meta_"):
+            has_meta_inputs = True
+            meta_key = k[5:]
+            submitted_meta[meta_key] = str(v)
+        elif k != "name" and not k.startswith("_"):
+            has_meta_inputs = True
+            if k not in submitted_meta:
+                submitted_meta[k] = str(v)
+
+    meta_updates = submitted_meta if has_meta_inputs else None
+
+    db.update_client(
+        client_id=client_id,
+        name=clean_name,
+        meta_updates=meta_updates,
+    )
     return RedirectResponse(
         url=f"/clients/{client_id}?saved=1",
         status_code=status.HTTP_303_SEE_OTHER,
@@ -105,10 +140,18 @@ async def edit_client_name_endpoint(
 
 
 @router.post("/clients/{client_id}/edit", response_class=RedirectResponse)
-async def edit_client_name_alias(
+async def edit_client_alias(
     client_id: int,
-    name: Annotated[str, Form()],
+    request: Request,
 ):
-    return await edit_client_name_endpoint(client_id=client_id, name=name)
+    return await edit_client_endpoint(client_id=client_id, request=request)
+
+
+@router.post("/clients/{client_id}/meta", response_class=RedirectResponse)
+async def edit_client_meta_alias(
+    client_id: int,
+    request: Request,
+):
+    return await edit_client_endpoint(client_id=client_id, request=request)
 
 

@@ -107,7 +107,7 @@ Reviews are placed after roughly **6–10 tasks / 600–1000 changed lines** of 
 *TD §14 Phase 2 · FR-1…4*
 
 - [x] **T2.1** Client CRUD: list page, create (name), view page, edit name; client page layout with placeholder sections for chats and plans (filled in later phases); all queries scoped by `current_user_id()` and `deleted_at IS NULL`. _Ref: TD §5 (`clients`), §9 (Clients), §14 P2; FR-1…3_
-- [ ] **T2.2** Client meta form: generated from active meta fields; **merge-save** into `clients.meta_json` (submitted keys only; preserve unknown keys and values of soft-deleted fields; empty value removes the key); JSON written with `ensure_ascii=False`. _Ref: TD §5 (`meta_json`), §8.3 (meta field soft delete), §14 P2; FR-2_
+- [x] **T2.2** Client meta form: generated from active meta fields; **merge-save** into `clients.meta_json` (submitted keys only; preserve unknown keys and values of soft-deleted fields; empty value removes the key); JSON written with `ensure_ascii=False`. _Ref: TD §5 (`meta_json`), §8.3 (meta field soft delete), §14 P2; FR-2_
 - [ ] **T2.3** Soft-delete services in `app/services/`: `delete_client` (one transaction, same timestamp on the client, all its chats, all its plans; messages untouched) and `delete_chat` (chat + its plans, same timestamp; log reasoning in `DECISIONS.md` if you deviate); wire `POST /clients/{id}/delete`; unit tests (no rows/files physically removed; hidden everywhere afterwards). _Ref: TD §8.3, §16.2, §13 (cascade test); FR-4, 9, 20, 22, 29_
 - [ ] **T2.G** Phase 2 gate — verify:
   - [ ] Client created, meta edited and persisted; clearing a field removes the key; values of a soft-deleted meta field survive a form save

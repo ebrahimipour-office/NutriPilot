@@ -18,11 +18,11 @@
 
 {% if saved %}
 <div class="alert alert-success">
-  اطلاعات نام مراجع با موفقیت به‌روزرسانی شد.
+  اطلاعات مراجع با موفقیت به‌روزرسانی شد.
 </div>
 {% endif %}
 
-<!-- مشخصات و ویرایش نام مراجع -->
+<!-- مشخصات و ویرایش مراجع -->
 <div class="card">
   <div class="card-header">
     <h2 class="card-title">مشخصات مراجع</h2>
@@ -30,20 +30,54 @@
   </div>
   <div class="card-body">
     <form action="/clients/{{ client.id }}" method="POST">
-      <div class="form-group" style="max-width: 500px;">
+      <div class="form-group" style="max-width: 500px; margin-bottom: 1.5rem;">
         <label for="name" class="form-label">نام مراجع</label>
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <input
-            type="text"
-            id="name"
-            name="name"
-            class="form-control"
-            value="{{ client.name }}"
-            required
-          >
-          <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">ذخیره نام</button>
-        </div>
+        <input
+          type="text"
+          id="name"
+          name="name"
+          class="form-control"
+          value="{{ client.name }}"
+          required
+        >
         <span class="form-hint">تاریخ ثبت: {{ client.created_at | fmt_date }}</span>
+      </div>
+
+      <div style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <h3 style="font-size: 1.1rem; margin: 0;">متای مراجع</h3>
+          <a href="/settings" class="text-muted" style="font-size: 0.85rem; text-decoration: none;">مدیریت فیلدهای متا &larr;</a>
+        </div>
+        <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 1rem;">
+          فیلدهای اطلاعاتی فعال که در تنظیمات تعریف شده‌اند. برای حذف مقدار یک فیلد، آن را خالی بگذارید.
+        </p>
+
+        {% if meta_fields %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+          {% for field in meta_fields %}
+          <div class="form-group" style="margin-bottom: 0;">
+            <label for="meta_{{ field.key }}" class="form-label">
+              {{ field.label }}
+              <span class="text-muted" style="font-size: 0.75rem; font-weight: normal;">({{ field.key }})</span>
+            </label>
+            <input
+              type="text"
+              id="meta_{{ field.key }}"
+              name="meta_{{ field.key }}"
+              class="form-control"
+              value="{{ client_meta.get(field.key, '') }}"
+              placeholder="{{ field.label }}"
+            >
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state" style="padding: 1.25rem; margin-bottom: 1.5rem; background-color: var(--bg-hover);">
+          <p style="margin: 0; font-size: 0.9rem;">هنوز هیچ فیلد متایی در تنظیمات تعریف نشده است.</p>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary">ذخیره مشخصات</button>
       </div>
     </form>
   </div>
