@@ -8,9 +8,55 @@
   <a href="/clients/new" class="btn btn-primary">ثبت مراجع جدید</a>
 </div>
 
+{% if created %}
+<div class="alert alert-success">
+  مراجع با موفقیت ثبت شد.
+</div>
+{% endif %}
+
+{% if deleted %}
+<div class="alert alert-info">
+  مراجع با موفقیت حذف شد.
+</div>
+{% endif %}
+
+{% if clients %}
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>نام مراجع</th>
+          <th>تاریخ ثبت</th>
+          <th>عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client in clients %}
+        <tr>
+          <td>
+            <a href="/clients/{{ client.id }}" style="font-weight: 600; color: var(--primary-color); text-decoration: none;">
+              {{ client.name }}
+            </a>
+          </td>
+          <td>{{ client.created_at | fmt_date }}</td>
+          <td>
+            <a href="/clients/{{ client.id }}" class="btn btn-secondary btn-sm">
+              مشاهده و جزئیات
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
 <div class="empty-state">
   <h3>هنوز هیچ مراجعی ثبت نشده است</h3>
   <p>اطلاعات شاگردان و مراجعان خود را ثبت کنید تا تاریخچه برنامه‌ها حفظ شود.</p>
   <a href="/clients/new" class="btn btn-secondary">افزودن مراجع جدید</a>
 </div>
+{% endif %}
 {% endblock %}
+

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}{{ client.name }} | مراجعان | NutriPilot{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/clients" class="text-muted" style="text-decoration: none; font-size: 0.9rem;">&rarr; بازگشت به لیست مراجعان</a>
+    <h1 class="page-title" style="margin-top: 0.5rem;">پرونده مراجع: {{ client.name }}</h1>
+  </div>
+</div>
+
+{% if created %}
+<div class="alert alert-success">
+  مراجع جدید با موفقیت ایجاد شد.
+</div>
+{% endif %}
+
+{% if saved %}
+<div class="alert alert-success">
+  اطلاعات نام مراجع با موفقیت به‌روزرسانی شد.
+</div>
+{% endif %}
+
+<!-- مشخصات و ویرایش نام مراجع -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">مشخصات مراجع</h2>
+    <span class="badge">شناسه: #{{ client.id }}</span>
+  </div>
+  <div class="card-body">
+    <form action="/clients/{{ client.id }}" method="POST">
+      <div class="form-group" style="max-width: 500px;">
+        <label for="name" class="form-label">نام مراجع</label>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <input
+            type="text"
+            id="name"
+            name="name"
+            class="form-control"
+            value="{{ client.name }}"
+            required
+          >
+          <button type="submit" class="btn btn-primary btn-sm" style="white-space: nowrap;">ذخیره نام</button>
+        </div>
+        <span class="form-hint">تاریخ ثبت: {{ client.created_at | fmt_date }}</span>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- بخش گفت‌وگوها (Placeholder) -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">گفت‌وگوها</h2>
+    <a href="/chats/new?client_id={{ client.id }}" class="btn btn-secondary btn-sm">گفت‌وگوی جدید</a>
+  </div>
+  <div class="card-body">
+    {% if chats %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>عنوان گفت‌وگو</th>
+            <th>تاریخ</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for chat in chats %}
+          <tr>
+            <td>
+              <a href="/chats/{{ chat.id }}" style="font-weight: 500; color: var(--primary-color); text-decoration: none;">
+                {{ chat.title }}
+              </a>
+            </td>
+            <td>{{ chat.created_at | fmt_date }}</td>
+            <td>
+              <a href="/chats/{{ chat.id }}" class="btn btn-secondary btn-sm">باز کردن</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="margin-block: 1rem; padding: 2rem 1rem;">
+      <h3>هنوز گفت‌وگویی برای این مراجع ثبت نشده است</h3>
+      <p>شما می‌توانید گفت‌وگوی جدیدی با دستیار هوشمند برای این مراجع آغاز کنید.</p>
+      <a href="/chats/new?client_id={{ client.id }}" class="btn btn-secondary btn-sm">شروع گفت‌وگوی جدید</a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- بخش برنامه‌های غذایی (Placeholder) -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">برنامه‌های غذایی</h2>
+  </div>
+  <div class="card-body">
+    {% if plans %}
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>عنوان برنامه</th>
+            <th>نسخه</th>
+            <th>وضعیت</th>
+            <th>تاریخ</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for plan in plans %}
+          <tr>
+            <td>{{ plan.title }}</td>
+            <td><span class="badge">v{{ plan.version }}</span></td>
+            <td>
+              {% if plan.status == 'approved' %}
+              <span class="badge" style="background-color: #dcfce7; color: #166534;">تأیید شده</span>
+              {% else %}
+              <span class="badge" style="background-color: #fef9c3; color: #854d0e;">پیش‌نویس</span>
+              {% endif %}
+            </td>
+            <td>{{ plan.created_at | fmt_date }}</td>
+            <td>
+              <a href="/plans/{{ plan.id }}" class="btn btn-secondary btn-sm">مشاهده</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state" style="margin-block: 1rem; padding: 2rem 1rem;">
+      <h3>هنوز برنامه غذایی برای این مراجع ثبت نشده است</h3>
+      <p>برنامه‌های غذایی پس از تدوین در چت و تأیید مربی، در این بخش آرشیو و نگهداری می‌شوند.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
